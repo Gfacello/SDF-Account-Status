@@ -1,0 +1,27 @@
+<idea-plugin>
+    <id>com.sdf.accountstatus</id>
+    <name>SDF Account Status</name>
+    <vendor email="support@example.com" url="https://example.com">SDF Team</vendor>
+
+    <description>
+        <h2>Overview</h2>
+        <p>Displays the active SuiteCloud SDF default account from <code>project.json</code> directly in the status bar.</p>
+        <ul>
+            <li>Auto-detects <code>defaultAuthId</code> (and legacy <code>DefaultAuthID</code>)</li>
+            <li>Auto-refreshes when the account changes in SuiteCloud settings</li>
+            <li>Click the label to open <code>project.json</code></li>
+        </ul>
+        <h3>Environment Colors</h3>
+        <ul>
+            <li><b>Green</b>: Sandbox</li>
+            <li><b>Red + critical icon</b>: Production</li>
+            <li><b>Yellow</b>: Unknown</li>
+        </ul>
+    </description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <statusBarWidgetFactory implementation="com.sdf.accountstatus.SdfAccountStatusBarWidgetFactory"/>
+    </extensions>
+</idea-plugin>
