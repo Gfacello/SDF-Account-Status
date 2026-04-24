@@ -33,7 +33,7 @@ import javax.swing.JComponent
 import javax.swing.UIManager
 
 class SdfAccountStatusBarWidgetFactory : StatusBarWidgetFactory {
-    override fun getId(): String = WIDGET_ID
+    override fun getId(): String = STATUS_BAR_WIDGET_ID
 
     override fun getDisplayName(): String = "SDF Account Status"
 
@@ -48,10 +48,6 @@ class SdfAccountStatusBarWidgetFactory : StatusBarWidgetFactory {
     }
 
     override fun canBeEnabledOn(statusBar: StatusBar): Boolean = true
-
-    companion object {
-        private const val WIDGET_ID = "SdfAccountStatusWidget"
-    }
 }
 
 private class SdfAccountStatusBarWidget(private val project: Project) : CustomStatusBarWidget, Disposable {
@@ -101,7 +97,7 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
         })
     }
 
-    override fun ID(): String = "SdfAccountStatusWidget"
+    override fun ID(): String = STATUS_BAR_WIDGET_ID
 
     override fun getComponent(): JComponent = label
 

@@ -22,6 +22,8 @@
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <statusBarWidgetFactory implementation="com.sdf.accountstatus.SdfAccountStatusBarWidgetFactory"/>
+        <!-- id must match STATUS_BAR_WIDGET_ID in com.sdf.accountstatus.SdfAccountStatusIds -->
+        <statusBarWidgetFactory id="SdfAccountStatusWidget"
+                                implementation="com.sdf.accountstatus.SdfAccountStatusBarWidgetFactory"/>
     </extensions>
 </idea-plugin>
