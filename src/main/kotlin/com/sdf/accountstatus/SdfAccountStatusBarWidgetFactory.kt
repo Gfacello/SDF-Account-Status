@@ -99,6 +99,9 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
 
     override fun ID(): String = STATUS_BAR_WIDGET_ID
 
+    /** Return null: UI is [getComponent]; avoids default `getPresentation()` calling deprecated `PlatformType` overload. */
+    override fun getPresentation(): StatusBarWidget.WidgetPresentation? = null
+
     override fun getComponent(): JComponent = label
 
     override fun dispose() {
