@@ -31,6 +31,7 @@ import java.util.concurrent.TimeUnit
 import javax.swing.Icon
 import javax.swing.JComponent
 import javax.swing.UIManager
+import kotlin.jvm.JvmDefaultWithoutCompatibility
 
 class SdfAccountStatusBarWidgetFactory : StatusBarWidgetFactory {
     override fun getId(): String = STATUS_BAR_WIDGET_ID
@@ -50,6 +51,7 @@ class SdfAccountStatusBarWidgetFactory : StatusBarWidgetFactory {
     override fun canBeEnabledOn(statusBar: StatusBar): Boolean = true
 }
 
+@JvmDefaultWithoutCompatibility
 private class SdfAccountStatusBarWidget(private val project: Project) : CustomStatusBarWidget, Disposable {
     private val label = JBLabel("loading...")
     private val criticalIcon: Icon? = UIManager.getIcon("OptionPane.errorIcon")?.let {
