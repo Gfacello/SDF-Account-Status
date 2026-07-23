@@ -1,6 +1,6 @@
-# SDF Account Status (WebStorm Plugin)
+# SDF Account Status for NetSuite
 
-Shows the active SuiteCloud SDF default account from `project.json` directly in the status bar.
+Shows the active NetSuite SuiteCloud Development Framework (SDF) account from `project.json` directly in the WebStorm status bar.
 
 ## Features
 
@@ -39,7 +39,7 @@ Commands:
 
 Plugin ZIP output:
 
-`build/distributions/webstorm-sdf-account-status-0.1.0.zip`
+`build/distributions/webstorm-sdf-account-status-0.1.1.zip`
 
 ## Publishing Readiness
 
