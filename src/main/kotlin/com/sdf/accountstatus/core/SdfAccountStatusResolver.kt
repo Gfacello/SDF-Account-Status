@@ -25,7 +25,9 @@ internal class SdfAccountStatusResolver(
     private val projectJsonPath: Path?,
     private val dataSource: ProjectJsonDataSource = NioProjectJsonDataSource
 ) {
-    fun resolve(): AccountWidgetState {
+    fun resolve(
+        knownEnvironments: Map<String, AccountEnvironment> = emptyMap()
+    ): AccountWidgetState {
         val path = projectJsonPath
             ?: return AccountWidgetState(
                 text = "no project",
@@ -33,7 +35,14 @@ internal class SdfAccountStatusResolver(
                 tone = WidgetTone.ERROR
             )
 
-        if (!dataSource.exists(path)) {
+        val exists = runCatching { dataSource.exists(path) }.getOrElse {
+            return AccountWidgetState(
+                text = "read error",
+                tooltip = "Cannot access ${path.toAbsolutePath()}: ${it.message}",
+                tone = WidgetTone.ERROR
+            )
+        }
+        if (!exists) {
             return AccountWidgetState(
                 text = "project.json missing",
                 tooltip = "project.json was not found at ${path.toAbsolutePath()}",
@@ -49,25 +58,49 @@ internal class SdfAccountStatusResolver(
             )
         }
 
-        val account = SdfProjectJsonParser.parseDefaultAuthId(content)
-        if (account.isNullOrBlank()) {
-            return AccountWidgetState(
-                text = "defaultAuthId not set",
-                tooltip = "Set defaultAuthId in project.json",
-                tone = WidgetTone.WARNING
-            )
+        val account = when (val parsed = SdfProjectJsonParser.inspect(content)) {
+            is ProjectJsonParseResult.Configured -> parsed.authenticationId
+            ProjectJsonParseResult.MissingKey -> {
+                return AccountWidgetState(
+                    text = "defaultAuthId not set",
+                    tooltip = "Set defaultAuthId in project.json",
+                    tone = WidgetTone.WARNING
+                )
+            }
+            ProjectJsonParseResult.InvalidJson -> {
+                return AccountWidgetState(
+                    text = "project.json invalid",
+                    tooltip = "project.json must contain a valid JSON object",
+                    tone = WidgetTone.ERROR
+                )
+            }
+            is ProjectJsonParseResult.InvalidKeyType -> {
+                return AccountWidgetState(
+                    text = "defaultAuthId invalid",
+                    tooltip = "${parsed.key} must be a non-empty JSON string in project.json",
+                    tone = WidgetTone.ERROR
+                )
+            }
+            is ProjectJsonParseResult.BlankAuthenticationId -> {
+                return AccountWidgetState(
+                    text = "defaultAuthId empty",
+                    tooltip = "${parsed.key} must be a non-empty JSON string in project.json",
+                    tone = WidgetTone.WARNING
+                )
+            }
         }
 
-        val environment = SdfAccountEnvironmentClassifier.classify(account)
+        val environment = knownEnvironments[account] ?: AccountEnvironment.UNKNOWN
         val tone = when (environment) {
             AccountEnvironment.SANDBOX -> WidgetTone.OK
             AccountEnvironment.PRODUCTION -> WidgetTone.ERROR
+            AccountEnvironment.RELEASE_PREVIEW,
             AccountEnvironment.UNKNOWN -> WidgetTone.WARNING
         }
 
         return AccountWidgetState(
             text = account,
-            tooltip = "Current SDF default account ($account) - ${environment.label}. Click to open project.json",
+            tooltip = "Current SDF default account ($account) - ${environment.label}. Click to choose an account",
             tone = tone,
             showCriticalIcon = environment == AccountEnvironment.PRODUCTION
         )
@@ -75,7 +108,8 @@ internal class SdfAccountStatusResolver(
 
     fun getLastModifiedMillisOrMinusOne(): Long {
         val path = projectJsonPath ?: return -1L
-        if (!dataSource.exists(path)) return -1L
-        return runCatching { dataSource.lastModifiedMillis(path) }.getOrDefault(-1L)
+        return runCatching {
+            if (!dataSource.exists(path)) -1L else dataSource.lastModifiedMillis(path)
+        }.getOrDefault(-1L)
     }
 }

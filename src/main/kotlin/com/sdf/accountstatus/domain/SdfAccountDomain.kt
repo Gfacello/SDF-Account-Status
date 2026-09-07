@@ -3,7 +3,8 @@ package com.sdf.accountstatus.domain
 enum class AccountEnvironment(val label: String) {
     SANDBOX("Sandbox"),
     PRODUCTION("Production"),
-    UNKNOWN("Unknown Environment")
+    RELEASE_PREVIEW("Release Preview"),
+    UNKNOWN("Unverified")
 }
 
 enum class WidgetTone {
