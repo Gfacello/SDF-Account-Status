@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Test, package, and verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run tests, package, and verification gates
+        run: >-
+          ./gradlew clean test buildPlugin
+          verifyPluginProjectConfiguration verifyPluginStructure verifyPlugin
+          --no-daemon --stacktrace
+
+      - name: Upload plugin distribution and reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: netsuite-sdf-account-status-${{ github.sha }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            build/distributions/*.zip
+            build/reports/tests/test/
+            build/reports/pluginVerifier/
+            build/reports/problems/

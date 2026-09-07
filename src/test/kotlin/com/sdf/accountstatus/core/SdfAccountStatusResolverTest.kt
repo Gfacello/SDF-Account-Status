@@ -1,6 +1,7 @@
 package com.sdf.accountstatus.core
 
 import com.sdf.accountstatus.domain.WidgetTone
+import com.sdf.accountstatus.domain.AccountEnvironment
 import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -9,6 +10,15 @@ import kotlin.test.assertTrue
 
 class SdfAccountStatusResolverTest {
     private val path = Path.of("/tmp/project.json")
+
+    @Test
+    fun `returns no project state when a project path is unavailable`() {
+        val state = SdfAccountStatusResolver(null).resolve()
+
+        assertEquals("no project", state.text)
+        assertEquals(WidgetTone.ERROR, state.tone)
+        assertFalse(state.showCriticalIcon)
+    }
 
     @Test
     fun `returns missing file state when project json does not exist`() {
@@ -37,6 +47,22 @@ class SdfAccountStatusResolverTest {
     }
 
     @Test
+    fun `returns read error state when project json cannot be inspected`() {
+        val resolver = SdfAccountStatusResolver(
+            path,
+            FakeDataSource(exists = true, existsError = IllegalStateException("access denied"))
+        )
+
+        val state = resolver.resolve()
+
+        assertEquals("read error", state.text)
+        assertEquals(WidgetTone.ERROR, state.tone)
+        assertTrue(state.tooltip.contains("access denied"))
+        assertFalse(state.showCriticalIcon)
+        assertEquals(-1L, resolver.getLastModifiedMillisOrMinusOne())
+    }
+
+    @Test
     fun `returns missing defaultAuthId state when key does not exist`() {
         val resolver = SdfAccountStatusResolver(
             path,
@@ -50,13 +76,117 @@ class SdfAccountStatusResolverTest {
         assertFalse(state.showCriticalIcon)
     }
 
+    @Test
+    fun `returns invalid json state instead of reporting a missing key`() {
+        val resolver = SdfAccountStatusResolver(
+            path,
+            FakeDataSource(exists = true, content = """{"defaultAuthId":}""")
+        )
+
+        val state = resolver.resolve()
+
+        assertEquals("project.json invalid", state.text)
+        assertEquals(WidgetTone.ERROR, state.tone)
+        assertTrue(state.tooltip.contains("valid JSON object"))
+        assertFalse(state.showCriticalIcon)
+    }
+
+    @Test
+    fun `returns invalid key state when defaultAuthId is not a string`() {
+        val resolver = SdfAccountStatusResolver(
+            path,
+            FakeDataSource(exists = true, content = """{"defaultAuthId":123}""")
+        )
+
+        val state = resolver.resolve()
+
+        assertEquals("defaultAuthId invalid", state.text)
+        assertEquals(WidgetTone.ERROR, state.tone)
+        assertTrue(state.tooltip.contains("non-empty JSON string"))
+        assertFalse(state.showCriticalIcon)
+    }
+
+    @Test
+    fun `returns empty key state when defaultAuthId is blank`() {
+        val resolver = SdfAccountStatusResolver(
+            path,
+            FakeDataSource(exists = true, content = """{"DefaultAuthID":"  "}""")
+        )
+
+        val state = resolver.resolve()
+
+        assertEquals("defaultAuthId empty", state.text)
+        assertEquals(WidgetTone.WARNING, state.tone)
+        assertTrue(state.tooltip.contains("DefaultAuthID"))
+        assertFalse(state.showCriticalIcon)
+    }
+
+    @Test
+    fun `uses CLI-derived environment instead of a misleading auth ID name`() {
+        val resolver = SdfAccountStatusResolver(
+            path,
+            FakeDataSource(
+                exists = true,
+                content = """{"defaultAuthId":"misleading-auth-name"}"""
+            )
+        )
+
+        val state = resolver.resolve(
+            mapOf("misleading-auth-name" to AccountEnvironment.PRODUCTION)
+        )
+
+        assertEquals(WidgetTone.ERROR, state.tone)
+        assertTrue(state.showCriticalIcon)
+        assertTrue(state.tooltip.contains("Production"))
+    }
+
+    @Test
+    fun `does not infer an environment from an unverified authentication ID`() {
+        val resolver = SdfAccountStatusResolver(
+            path,
+            FakeDataSource(
+                exists = true,
+                content = """{"defaultAuthId":"claims-to-be-production"}"""
+            )
+        )
+
+        val state = resolver.resolve()
+
+        assertEquals(WidgetTone.WARNING, state.tone)
+        assertFalse(state.showCriticalIcon)
+        assertTrue(state.tooltip.contains(AccountEnvironment.UNKNOWN.label))
+    }
+
+    @Test
+    fun `uses warning tone for CLI-derived release preview account`() {
+        val resolver = SdfAccountStatusResolver(
+            path,
+            FakeDataSource(
+                exists = true,
+                content = """{"defaultAuthId":"demo-release-preview"}"""
+            )
+        )
+
+        val state = resolver.resolve(
+            mapOf("demo-release-preview" to AccountEnvironment.RELEASE_PREVIEW)
+        )
+
+        assertEquals(WidgetTone.WARNING, state.tone)
+        assertFalse(state.showCriticalIcon)
+        assertTrue(state.tooltip.contains("Release Preview"))
+    }
+
     private class FakeDataSource(
         private val exists: Boolean,
         private val content: String = "",
+        private val existsError: Throwable? = null,
         private val readError: Throwable? = null,
         private val lastModifiedMillis: Long = -1L
     ) : ProjectJsonDataSource {
-        override fun exists(path: Path): Boolean = exists
+        override fun exists(path: Path): Boolean {
+            existsError?.let { throw it }
+            return exists
+        }
 
         override fun read(path: Path): String {
             readError?.let { throw it }
