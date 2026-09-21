@@ -2,8 +2,6 @@ package com.sdf.accountstatus
 
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.command.WriteCommandAction
-import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
@@ -26,13 +24,11 @@ import com.intellij.util.IconUtil
 import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
-import com.sdf.accountstatus.core.ProjectJsonUpdateResult
 import com.sdf.accountstatus.core.SdfAccountEnvironmentClassifier
 import com.sdf.accountstatus.core.SdfAccountStatusResolver
 import com.sdf.accountstatus.core.SdfAuthListLoadResult
 import com.sdf.accountstatus.core.SdfAuthentication
 import com.sdf.accountstatus.core.SdfProjectJsonParser
-import com.sdf.accountstatus.core.SdfProjectJsonUpdater
 import com.sdf.accountstatus.core.SuiteCloudAuthListLoader
 import com.sdf.accountstatus.domain.AccountEnvironment
 import com.sdf.accountstatus.domain.AccountWidgetState
@@ -84,6 +80,18 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
         ?.let { Path.of(it, "project.json").toAbsolutePath().normalize() }
     private val resolver = SdfAccountStatusResolver(projectJsonPath)
     private val accountLoader = SuiteCloudAuthListLoader()
+    private val projectJsonGateway = IntellijProjectJsonGateway(project, projectJsonPath)
+    private val controller = AccountWorkflowController(
+        writer = projectJsonGateway,
+        currentAuthenticationId = { currentAuthenticationId },
+        isUnavailable = { isDisposed || project.isDisposed },
+        later = { ApplicationManager.getApplication().invokeLater(it) },
+        onSaved = { account ->
+            currentAuthenticationId = account.authenticationId
+            applyState(stateForSelectedAccount(account))
+            refreshAsync()
+        }
+    )
     private val connection = project.messageBus.connect(this)
     private val refreshGeneration = AtomicInteger()
     private val accountLoadGeneration = AtomicInteger()
@@ -147,6 +155,7 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
 
     override fun dispose() {
         isDisposed = true
+        controller.dispose()
         refreshGeneration.incrementAndGet()
         accountLoadGeneration.incrementAndGet()
         refreshTask?.cancel(true)
@@ -297,22 +306,19 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
         popup: JBPopup,
         panel: AccountPickerPanel
     ) {
-        if (account.isCurrent || account.authentication.authenticationId == currentAuthenticationId) {
-            if (!popup.isDisposed) popup.cancel()
-            return
-        }
+        val query = panel.searchQuery()
+        controller.selectAccount(account, object : AccountSelectionUi {
+            override fun closePicker() {
+                if (!popup.isDisposed) popup.cancel()
+            }
 
-        if (account.environment == AccountEnvironment.PRODUCTION) {
-            val query = panel.searchQuery()
-            if (!popup.isDisposed) popup.cancel()
-            ApplicationManager.getApplication().invokeLater {
-                if (project.isDisposed) return@invokeLater
-                val answer = Messages.showYesNoDialog(
+            override fun confirmProduction(account: AccountPickerAccount): Boolean =
+                Messages.showYesNoDialog(
                     project,
                     buildString {
                         appendLine("Switch the default SDF account to production?")
                         appendLine()
-                        appendLine("Authentication ID: ${account.authentication.authenticationId}")
+                        appendLine("Authentication ID: ${account.authenticationId}")
                         appendLine("Account: ${account.accountName} (${account.accountId})")
                         append("Role: ${account.role}")
                     },
@@ -320,88 +326,14 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
                     "Switch to Production",
                     "Cancel",
                     Messages.getWarningIcon()
-                )
-                if (isDisposed || project.isDisposed) return@invokeLater
-                if (answer == Messages.YES) {
-                    performAccountUpdate(account, popup = null, panel = null)
-                } else {
-                    showAccountPicker(restoredQuery = query)
-                }
-            }
-            return
-        }
+                ) == Messages.YES
 
-        performAccountUpdate(account, popup, panel)
-    }
+            override fun restorePicker() = showAccountPicker(restoredQuery = query)
 
-    private fun performAccountUpdate(
-        account: AccountPickerAccount,
-        popup: JBPopup?,
-        panel: AccountPickerPanel?
-    ) {
-        when (val update = updateProjectJson(account.authentication.authenticationId)) {
-            is ProjectJsonUpdateResult.Updated -> {
-                currentAuthenticationId = account.authentication.authenticationId
-                applyState(stateForSelectedAccount(account))
-                refreshAsync()
-                if (popup != null && !popup.isDisposed) popup.cancel()
+            override fun showError(message: String) {
+                if (!popup.isDisposed) panel.showOperationError(message) else showPopupMessage(message)
             }
-            is ProjectJsonUpdateResult.Invalid -> {
-                if (panel != null && popup != null && !popup.isDisposed) {
-                    panel.showOperationError(update.message)
-                } else {
-                    showPopupMessage(update.message)
-                }
-            }
-        }
-    }
-
-    private fun updateProjectJson(authenticationId: String): ProjectJsonUpdateResult {
-        val virtualFile = projectJsonVirtualFile
-            ?.takeIf { it.isValid }
-            ?: projectJsonPath?.let { LocalFileSystem.getInstance().findFileByNioFile(it) }
-            ?: return ProjectJsonUpdateResult.Invalid(
-                "project.json was not found. The account was not changed."
-            )
-        projectJsonVirtualFile = virtualFile
-        if (!virtualFile.isWritable) {
-            return ProjectJsonUpdateResult.Invalid(
-                "project.json is read-only. The account was not changed."
-            )
-        }
-
-        val documentManager = FileDocumentManager.getInstance()
-        val document = documentManager.getDocument(virtualFile)
-            ?: return ProjectJsonUpdateResult.Invalid(
-                "project.json could not be opened. The account was not changed."
-            )
-        val originalContent = document.text
-        val update = SdfProjectJsonUpdater.updateDefaultAuthId(originalContent, authenticationId)
-        if (update !is ProjectJsonUpdateResult.Updated) return update
-
-        return try {
-            WriteCommandAction.writeCommandAction(project)
-                .withName("Select NetSuite SDF Account")
-                .run<RuntimeException> {
-                    document.setText(update.content)
-                    documentManager.saveDocument(document)
-                }
-            if (documentManager.isDocumentUnsaved(document)) {
-                throw IllegalStateException("project.json was not saved")
-            }
-            update
-        } catch (_: Exception) {
-            if (document.text == update.content) {
-                runCatching {
-                    WriteCommandAction.writeCommandAction(project)
-                        .withName("Restore project.json")
-                        .run<RuntimeException> { document.setText(originalContent) }
-                }
-            }
-            ProjectJsonUpdateResult.Invalid(
-                "Unable to update project.json. The account was not changed."
-            )
-        }
+        })
     }
 
     private fun openProjectJson() {
