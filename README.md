@@ -17,6 +17,15 @@ The project is independent and is not affiliated with or endorsed by Oracle or J
 - Uses a resizable chooser, remembers its dimensions, and keeps **Open project.json** fixed at bottom right.
 - Requires confirmation before switching to a production account.
 - Updates only the supported authentication-ID fields while preserving unrelated JSON values.
+- Opens the current or a selected account in NetSuite using a locally saved account URL.
+
+### Open in NetSuite
+
+Right-click the status label for the current account, or an account row for that row, and choose **Open in NetSuite**. The context menu also opens with Shift+F10 or the keyboard's context-menu key. This action does not change the SDF project default.
+
+On first use, paste the **NetSuite UI** base URL from **Setup > Company > Company Information > Company URLs**. Use an HTTPS account-specific `app.netsuite.com` URL without a path, query, or fragment. **Set account URL…** edits it later. URLs are stored only in the IDE's local settings, shared by roles for the same account, with separate production and sandbox mappings.
+
+The browser uses its current session or normal sign-in flow; opening a URL does not select the CLI authentication role in the browser. Load account metadata before configuring a URL.
 
 ## Compatibility
 

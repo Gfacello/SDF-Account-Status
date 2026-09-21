@@ -176,6 +176,40 @@ class SdfAccountStatusResolverTest {
         assertTrue(state.tooltip.contains("Release Preview"))
     }
 
+    @Test
+    fun `snapshot reads project content once and derives current ID from that content`() {
+        var reads = 0
+        val dataSource = object : ProjectJsonDataSource {
+            override fun exists(path: Path) = true
+            override fun read(path: Path): String {
+                reads++
+                return if (reads == 1) """{"defaultAuthId":"first"}""" else """{"defaultAuthId":"second"}"""
+            }
+            override fun lastModifiedMillis(path: Path) = 42L
+        }
+        val snapshot = SdfAccountStatusResolver(path, dataSource).readSnapshot()
+        assertEquals(1, reads)
+        assertEquals("first", snapshot.authenticationId)
+        assertEquals("first", SdfAccountStatusPresentation.present(snapshot).text)
+        assertFalse(snapshot.changedWhileReading)
+    }
+
+    @Test
+    fun `snapshot detects edits during content read instead of recording a newer stamp as observed`() {
+        var stamp = 1L
+        val dataSource = object : ProjectJsonDataSource {
+            override fun exists(path: Path) = true
+            override fun read(path: Path): String {
+                stamp = 2L
+                return """{"defaultAuthId":"old"}"""
+            }
+            override fun lastModifiedMillis(path: Path) = stamp
+        }
+        val snapshot = SdfAccountStatusResolver(path, dataSource).readSnapshot()
+        assertTrue(snapshot.changedWhileReading)
+        assertEquals(1L, snapshot.lastModifiedMillis)
+    }
+
     private class FakeDataSource(
         private val exists: Boolean,
         private val content: String = "",

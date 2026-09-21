@@ -24,7 +24,7 @@ class AccountPickerPanelTest {
     }
 
     @Test
-    fun `restores search text after a cancelled production confirmation`() {
+    fun `restores search text and caret for the picker`() {
         val panel = AccountPickerPanel({}, {}, {})
 
         panel.restoreSearchQuery("example company administrator")
