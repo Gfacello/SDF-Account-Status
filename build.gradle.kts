@@ -48,7 +48,7 @@ intellijPlatform {
               <li>Confirms production switches and preserves unrelated <code>project.json</code> content</li>
               <li>Keeps <code>Open project.json</code> fixed in the popup footer</li>
             </ul>
-            <p>The plugin does not read SuiteCloud credential contents, log raw CLI output, or send automatic telemetry. Exception reports are sent to JetBrains Marketplace only when the user explicitly submits one.</p>
+            <p>The plugin does not read SuiteCloud credential contents, log raw CLI output, or send automatic telemetry. The IDE may submit exception reports to JetBrains Marketplace manually or automatically according to its error-reporting settings.</p>
             <p><small>Independent project; not affiliated with or endorsed by Oracle.</small></p>
         """.trimIndent()
 
@@ -62,7 +62,7 @@ intellijPlatform {
               <li>Uses a compact, resizable chooser with a fixed <code>Open project.json</code> action</li>
               <li>Safely updates <code>project.json</code> while preserving unrelated JSON values</li>
               <li>Fixes the Swing accessibility crash seen when opening the chooser</li>
-              <li>Adds opt-in JetBrains Marketplace exception reporting and production documentation</li>
+              <li>Adds JetBrains Marketplace exception reporting controlled by IDE preferences and production documentation</li>
             </ul>
         """.trimIndent()
     }

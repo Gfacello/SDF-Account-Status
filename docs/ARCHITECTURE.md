@@ -83,7 +83,7 @@ Recommendations favor the same normalized account family, a complementary enviro
 
 The CLI boundary accepts only display output from `manageauth -list`. The plugin never opens SDK credential files. Captured standard output and standard error are not logged, included in exception messages, or exposed by `toString()`. User-facing failures are fixed, non-sensitive messages.
 
-The plugin makes no application-level network calls. JetBrains Marketplace exception reporting is manual: data leaves the machine only when the user explicitly submits a report through WebStorm's consent UI.
+The plugin does not implement analytics or automatic telemetry. It registers the IDE's built-in JetBrains Marketplace exception reporter; the IDE can submit reports manually or automatically according to its error-reporting settings. This platform-managed reporting is independent of the plugin's account-list workflow. See [JetBrains error-handler documentation](https://plugins.jetbrains.com/docs/marketplace/error-handler.html).
 
 See [../SECURITY.md](../SECURITY.md) for disclosure instructions.
 

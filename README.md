@@ -112,7 +112,7 @@ Never paste credentials, tokens, private keys, or unsanitized CLI output into a 
 - Raw CLI standard output and standard error are never written to the IDE log or shown in error messages.
 - The plugin has no automatic analytics or telemetry and does not transmit account-list data.
 - Selecting an account writes only the selected authentication ID to the supported `project.json` field or fields.
-- Fatal error reports can be sent to the JetBrains Marketplace Exception Analyzer only when the user explicitly chooses to submit a report in WebStorm. The IDE shows the report data and consent flow before sending it; reports may contain a stack trace, IDE/OS/JVM/plugin metadata, user comments, and user-selected attachments.
+- Fatal error reports use the built-in JetBrains Marketplace Exception Analyzer. Reports may be submitted manually or automatically according to the IDE's error-reporting settings. Reports may include stack traces, IDE/OS/JVM/plugin metadata, user comments, and user-selected attachments. This IDE-managed reporting is separate from the plugin's analytics behavior. See [JetBrains error-handler documentation](https://plugins.jetbrains.com/docs/marketplace/error-handler.html).
 
 See [SECURITY.md](SECURITY.md) for responsible disclosure guidance.
 
