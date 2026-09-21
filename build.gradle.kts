@@ -47,7 +47,9 @@ intellijPlatform {
               <li>Searches accounts and groups them under a combined account-family/customer row</li>
               <li>Confirms production switches and preserves unrelated <code>project.json</code> content</li>
               <li>Keeps <code>Open project.json</code> fixed in the popup footer</li>
+              <li>Adds accounts through Oracle's NetSuite Account Management settings and refreshes the picker on return</li>
             </ul>
+            <p>The <b>Add an account</b> action requires Oracle's SuiteCloud IDE Plug-in for WebStorm, which handles authentication and credential storage.</p>
             <p>The plugin does not read SuiteCloud credential contents, log raw CLI output, or send automatic telemetry. Exception reports are sent to JetBrains Marketplace only when the user explicitly submits one.</p>
             <p><small>Independent project; not affiliated with or endorsed by Oracle.</small></p>
         """.trimIndent()

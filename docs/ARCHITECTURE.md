@@ -21,6 +21,7 @@ selected auth ID <── chooser <── parsed `manageauth -list` output
 7. The picker model marks the current account, adds related recommendations, and groups searchable metadata into one account-family/customer tier.
 8. The tree-table popup renders each combined group directly below its collapsible section, followed by aligned account/environment/role rows with loading, empty, error, and retry states.
 9. Activating an account validates and transforms the JSON, applies the result in an IntelliJ write command, saves it, refreshes the widget, and closes the popup. Production activation first requires confirmation.
+10. **Add an account** closes the picker and opens Oracle's Account Management configurable through the IntelliJ settings API. After settings close, the widget reloads accounts and reopens the picker with an empty search. The user selects a default separately.
 
 ## Main components
 
@@ -29,6 +30,7 @@ selected auth ID <── chooser <── parsed `manageauth -list` output
 | `SdfAccountStatusBarWidgetFactory` | Widget lifecycle and availability |
 | `SdfAccountStatusBarWidget` | Status UI, popup lifecycle, background dispatch, document save, and refresh |
 | `AccountPickerPanel` | Compact searchable tree-table UI, keyboard interaction, fixed footer action, and loading/error states |
+| `SuiteCloudAccountSetup` | Opens Oracle's Account Management settings by configurable ID; provides guidance if Oracle's plugin or settings page is unavailable |
 | `AccountPickerModelBuilder` | Current/recommended sections, combined account-family/customer grouping, deterministic sorting, and filtering |
 | `SdfAccountStatusResolver` | Converts project/file/authentication state into presentation-neutral widget state |
 | `SdfProjectJsonParser` | Reads canonical and legacy authentication-ID fields from strict JSON |
@@ -85,6 +87,8 @@ The CLI boundary accepts only display output from `manageauth -list`. The plugin
 
 The plugin makes no application-level network calls. JetBrains Marketplace exception reporting is manual: data leaves the machine only when the user explicitly submits a report through WebStorm's consent UI.
 
+The **Add an account** button delegates authentication to Oracle's separately installed plugin. That plugin communicates with NetSuite and manages credentials. This plugin only opens its settings page and reloads the read-only account list after the dialog closes.
+
 See [../SECURITY.md](../SECURITY.md) for disclosure instructions.
 
 ## External dependencies and limitations
@@ -92,6 +96,7 @@ See [../SECURITY.md](../SECURITY.md) for disclosure instructions.
 - IntelliJ Platform/WebStorm supplies the UI, VFS, command, document, and process APIs.
 - Gson is supplied by the target platform and is used for strict JSON validation and safe string encoding.
 - SuiteCloud CLI is a separate local runtime dependency used only by the account picker.
+- Oracle's SuiteCloud IDE Plug-in for WebStorm is optional and needed only for **Add an account**. Its settings page is selected by its registered configurable ID, without linking to Oracle implementation classes.
 - The current CLI adapter searches only the configured `.suitecloud-sdk` root, preferring an SDK-contained `sdfcli` launcher and retaining its `cli` JAR as a fallback. It never resolves `sdfcli` from the IDE process `PATH`. That Java CLI is end-of-support; a future adapter should support the current SuiteCloud CLI for Node.js without weakening output validation or redaction.
 - Authentication IDs are user-defined and are never used as authoritative environment evidence.
 

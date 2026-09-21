@@ -30,6 +30,7 @@ The plugin is designed around these constraints:
 - `project.json` is changed only after strict JSON validation and only through an IntelliJ write command.
 - Selecting an account changes the supported authentication-ID field or fields; unrelated JSON values are retained.
 - The plugin performs no automatic analytics or telemetry.
+- **Add an account** opens Oracle's Account Management settings; Oracle's plugin owns the authentication flow, network requests, and credential storage. The account list is reloaded after settings close.
 
 The plugin registers JetBrains Marketplace's built-in exception reporter. A report is transmitted only after a user explicitly reviews and submits it through WebStorm's error-reporting UI. JetBrains may receive diagnostic metadata, stack traces, user comments, and user-selected attachments according to that consent flow.
 

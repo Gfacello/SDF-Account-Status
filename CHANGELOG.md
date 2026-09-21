@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Add an account** button beside the account picker search field, available in loading, empty, and error states.
+- Opens Oracle's NetSuite Account Management settings and reloads the picker after settings close, without changing the project's default account.
+- Setup guidance when Oracle's SuiteCloud IDE Plug-in for WebStorm is unavailable.
+
 ## [0.2.0] - 2026-09-07
 
 ### Added

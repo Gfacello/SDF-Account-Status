@@ -206,7 +206,8 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
             onOpenProjectJson = {
                 if (!popup.isDisposed) popup.cancel()
                 openProjectJson()
-            }
+            },
+            onAddAccount = { openAccountSetup(popup, panel) }
         )
 
         popup = JBPopupFactory.getInstance()
@@ -247,6 +248,19 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
                 AccountPickerModelBuilder.build(state.accounts, currentAuthenticationId)
             )
             is AccountListState.Unavailable -> panel.showUnavailable(state.message)
+        }
+    }
+
+    private fun openAccountSetup(popup: JBPopup, panel: AccountPickerPanel) {
+        val query = panel.searchQuery()
+        if (!popup.isDisposed) popup.cancel()
+        ApplicationManager.getApplication().invokeLater {
+            if (isDisposed || project.isDisposed) return@invokeLater
+            val opened = SuiteCloudAccountSetup.open(project)
+            if (isDisposed || project.isDisposed) return@invokeLater
+            if (opened) loadAccountsInBackground(force = true)
+            // A previous search could hide the newly added account. Keep it only if setup did not open.
+            showAccountPicker(restoredQuery = if (opened) "" else query)
         }
     }
 

@@ -1,5 +1,6 @@
 package com.sdf.accountstatus
 
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.ui.ColoredTreeCellRenderer
 import com.intellij.ui.SearchTextField
@@ -19,6 +20,7 @@ import java.awt.event.KeyAdapter
 import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import javax.swing.JButton
 import javax.swing.JPanel
 import javax.swing.ListSelectionModel
 import javax.swing.tree.DefaultMutableTreeNode
@@ -31,7 +33,8 @@ import javax.swing.tree.TreePath
 internal class AccountPickerPanel(
     private val onAccountChosen: (AccountPickerAccount) -> Unit,
     private val onRetry: () -> Unit,
-    private val onOpenProjectJson: () -> Unit
+    private val onOpenProjectJson: () -> Unit,
+    private val onAddAccount: () -> Unit
 ) : JPanel(BorderLayout()) {
     val searchField = SearchTextField(false)
 
@@ -42,6 +45,12 @@ internal class AccountPickerPanel(
     private val stateLabel = JBLabel()
     private val retryLink = ActionLink("Retry") { onRetry() }
     private val openProjectJsonLink = ActionLink("Open project.json") { onOpenProjectJson() }
+    private val addAccountButton = JButton("Add an account", AllIcons.General.Add).apply {
+        mnemonic = KeyEvent.VK_A
+        toolTipText = "Open NetSuite Account Management to add an account"
+        accessibleContext.accessibleName = "Add an account"
+        addActionListener { onAddAccount() }
+    }
 
     private var fullModel: AccountPickerModel? = null
 
@@ -79,10 +88,15 @@ internal class AccountPickerPanel(
         warningLabel.border = JBUI.Borders.emptyTop(6)
         warningLabel.accessibleContext.accessibleName = "Account picker warning"
 
+        val searchAndActions = JPanel(BorderLayout(JBUI.scale(8), 0)).apply {
+            isOpaque = false
+            add(searchField, BorderLayout.CENTER)
+            add(addAccountButton, BorderLayout.EAST)
+        }
         val header = JPanel(BorderLayout()).apply {
             isOpaque = false
             border = JBUI.Borders.emptyBottom(6)
-            add(searchField, BorderLayout.NORTH)
+            add(searchAndActions, BorderLayout.NORTH)
             add(warningLabel, BorderLayout.SOUTH)
         }
 

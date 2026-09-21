@@ -10,6 +10,7 @@ The project is independent and is not affiliated with or endorsed by Oracle or J
 - Refreshes when `project.json` changes.
 - Uses green for sandbox, red plus a critical icon for production, and yellow for unknown or unavailable state.
 - Opens a searchable account picker from the status-bar label.
+- Provides **Add an account** beside the search field to open NetSuite Account Management, then reloads the account list when settings close.
 - Searches authentication ID, account name, account number, role, and environment.
 - Places the current account and closely related production, sandbox, or Release Preview accounts first.
 - Groups authentication IDs under one combined account-family/customer row in each collapsible section.
@@ -26,6 +27,7 @@ The project is independent and is not affiliated with or endorsed by Oracle or J
 | Plugin Verifier matrix | WebStorm 2026.1 and 2026.2 |
 | Project | SuiteCloud project with a valid `project.json` at the project root |
 | Account picker | Existing SuiteCloud CLI for Java installation in the SDK layout described below |
+| Add an account | Oracle's SuiteCloud IDE Plug-in for WebStorm installed and enabled |
 
 The plugin descriptor intentionally requires the WebStorm and JavaScript modules. Each future WebStorm release should pass Plugin Verifier before a plugin release is published for it.
 
@@ -80,6 +82,17 @@ The plugin validates the current document as strict JSON, updates `defaultAuthId
 
 Use **Open project.json** at the bottom of the chooser when you want to inspect or edit the file directly.
 
+### Add an account
+
+1. Click **Add an account** beside the picker search field. This is available even when the account list is empty or unavailable.
+2. In **Settings | Tools | NetSuite | Account Management**, click **+** and choose browser-based or machine-to-machine authentication.
+3. Complete Oracle's authentication flow and close settings. The picker reopens with a refreshed account list and clears the previous search so the new account can be found.
+4. Select the new account to make it the project's default. Adding an account alone does not switch `project.json`.
+
+This action requires Oracle's SuiteCloud IDE Plug-in for WebStorm. If it is missing or disabled, the button explains how to enable it. Authentication and credential storage are handled by Oracle's plugin.
+
+See [Oracle's account setup instructions](https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/subsect_1530894035.html).
+
 ## Environment detection
 
 After the account list is loaded, environment badges use the actual account ID returned by SuiteCloud CLI:
@@ -112,6 +125,7 @@ Never paste credentials, tokens, private keys, or unsanitized CLI output into a 
 - Raw CLI standard output and standard error are never written to the IDE log or shown in error messages.
 - The plugin has no automatic analytics or telemetry and does not transmit account-list data.
 - Selecting an account writes only the selected authentication ID to the supported `project.json` field or fields.
+- **Add an account** opens Oracle's settings page. Oracle's plugin communicates with NetSuite during the authentication flow you choose there.
 - Fatal error reports can be sent to the JetBrains Marketplace Exception Analyzer only when the user explicitly chooses to submit a report in WebStorm. The IDE shows the report data and consent flow before sending it; reports may contain a stack trace, IDE/OS/JVM/plugin metadata, user comments, and user-selected attachments.
 
 See [SECURITY.md](SECURITY.md) for responsible disclosure guidance.

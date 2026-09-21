@@ -13,7 +13,7 @@ import kotlin.test.assertEquals
 class AccountPickerPanelTest {
     @Test
     fun `keeps open project action fixed in the popup footer`() {
-        val panel = AccountPickerPanel({}, {}, {})
+        val panel = AccountPickerPanel({}, {}, {}, {})
 
         val openAction = panel.descendants()
             .filterIsInstance<ActionLink>()
@@ -25,7 +25,7 @@ class AccountPickerPanelTest {
 
     @Test
     fun `restores search text after a cancelled production confirmation`() {
-        val panel = AccountPickerPanel({}, {}, {})
+        val panel = AccountPickerPanel({}, {}, {}, {})
 
         panel.restoreSearchQuery("example company administrator")
 
@@ -34,7 +34,7 @@ class AccountPickerPanelTest {
 
     @Test
     fun `places each combined account and customer group directly below its section`() {
-        val panel = AccountPickerPanel({}, {}, {})
+        val panel = AccountPickerPanel({}, {}, {}, {})
         val model = AccountPickerModelBuilder.build(
             accounts = listOf(
                 SdfAuthentication(

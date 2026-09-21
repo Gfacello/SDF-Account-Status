@@ -13,6 +13,7 @@
             <li>Browse combined account-family/customer groups with aligned account, environment, and role columns</li>
             <li>See related-account recommendations and confirm before switching to production</li>
             <li>Open <code>project.json</code> directly from the account picker</li>
+            <li>Add an account through Oracle's NetSuite Account Management settings and refresh the picker on return</li>
         </ul>
         <h3>Environment Colors</h3>
         <ul>
@@ -21,6 +22,7 @@
             <li><b>Yellow</b>: Release Preview or unknown/unverified</li>
         </ul>
         <p><b>Requirement:</b> The account picker uses an existing local SuiteCloud CLI for Java installation and invokes only its read-only <code>manageauth -list</code> operation. The status display remains available when the CLI is unavailable.</p>
+        <p>The <b>Add an account</b> action additionally requires Oracle's SuiteCloud IDE Plug-in for WebStorm, which handles authentication and credential storage.</p>
         <p>The plugin does not read SuiteCloud credential contents, log CLI output, or provide automatic telemetry. Exception reports are sent to JetBrains Marketplace only when the user explicitly submits one from the IDE.</p>
         <p><small>Independent project; not affiliated with or endorsed by Oracle.</small></p>
     </description>
