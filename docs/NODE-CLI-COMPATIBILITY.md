@@ -56,6 +56,8 @@ Version 3.1.2's empty formatter emits no rows; 4.0.0/4.1.0 emit `There are no au
 
 The shared model accepts structured account details alongside the formatted display string, preserving bracket-containing roles and company punctuation from the separately labelled fields. Legacy Java rows still use their existing parser. Authentication IDs beginning with a hyphen or outside ASCII letters/digits/underscore/hyphen are rejected rather than passed as CLI control options. This is a conservative compatibility limitation, not evidence that Oracle rejects every such preexisting identity.
 
+Account classification and family grouping recognize Oracle's complete `_SB` and `_RP` suffixes with optional digits, including `123456_SB` and `123456_RP2`. These are classified from the actual account ID, never the authentication alias. Unrecognized nonnumeric account IDs retain the existing Unknown classification instead of inheriting the formatter's catch-all Production label.
+
 The domain is not treated as a canonical NetSuite UI URL. Open in NetSuite retains the separately saved account URL approach.
 
 ## Launcher, execution context and resource limits
@@ -72,7 +74,7 @@ The domain is not treated as a canonical NetSuite UI URL. Open in NetSuite retai
 
 Automated tests exercise the pure parser, provider command sequence/result handling, launcher discovery and actual subprocess I/O. The subprocess fixture uses the test JDK's source launcher so CI needs no Node installation or real accounts; it emits synthetic Oracle-format responses. Tests cover spaced paths, argument boundaries, working directory, preservation of project defaults, nonzero/stderr errors, output caps, timeout, cancellation and child-process termination. These tests verify this plugin's execution and parsing behavior; they do not prove a particular Oracle CLI installation, secure-storage service or WebStorm credential context works live.
 
-On 2026-09-21, `./gradlew test --offline -Dsun.net.client.defaultConnectTimeout=5000 -Dsun.net.client.defaultReadTimeout=5000` passed on macOS with JDK 21: 106 tests, including 27 Node-provider tests, zero failures or errors. Real subprocess tests cover malformed UTF-8, a child running at timeout, explicit cancellation and thread interruption. Windows launcher discovery is tested with a synthetic npm directory layout on macOS; Windows process execution has not been demonstrated.
+On 2026-09-21, `./gradlew test --offline -Dsun.net.client.defaultConnectTimeout=5000 -Dsun.net.client.defaultReadTimeout=5000` passed on macOS with JDK 21: 109 tests, including 28 Node-provider tests, zero failures or errors. Real subprocess tests cover malformed UTF-8, a child running at timeout, explicit cancellation and thread interruption. Metadata regressions cover Oracle's SB/RP suffix variants through picker classification and account-family recommendations. Windows launcher discovery is tested with a synthetic npm directory layout on macOS; Windows process execution has not been demonstrated.
 
 Before the provider/setup scope is marked demonstrated:
 

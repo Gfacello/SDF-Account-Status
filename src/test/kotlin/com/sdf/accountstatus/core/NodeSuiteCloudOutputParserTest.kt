@@ -1,5 +1,7 @@
 package com.sdf.accountstatus.core
 
+import com.sdf.accountstatus.AccountPickerModelBuilder
+import com.sdf.accountstatus.domain.AccountEnvironment
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -65,6 +67,19 @@ class NodeSuiteCloudOutputParserTest {
             INFO + "\nRAW_SECRET", INFO.replace("1234567_SB1", "123 4567"),
             INFO.replace("Account Name: Example Co", "Account Name: ")
         ).forEach { assertNull(NodeSuiteCloudOutputParser.account(it, "example_sb")) }
+    }
+
+    @Test
+    fun `Oracle account ID variants keep their environment in the picker`() {
+        val accounts = listOf("1234567_SB" to AccountEnvironment.SANDBOX, "1234567_RP2" to AccountEnvironment.RELEASE_PREVIEW)
+            .map { (accountId, environment) ->
+                val info = INFO.replace("1234567_SB1", accountId)
+                    .replace("Account Type: Sandbox", "Account Type: ${if (environment == AccountEnvironment.SANDBOX) "Sandbox" else "Release Preview"}")
+                val account = NodeSuiteCloudOutputParser.account(info, "example_sb")!!
+                assertEquals(environment, AccountPickerModelBuilder.build(listOf(account), null).accounts.single().environment)
+                account
+            }
+        assertEquals(listOf("1234567", "1234567"), accounts.map { SdfAccountIdentityNormalizer.accountFamily(it.accountDetails!!.accountId) })
     }
 
     companion object {
