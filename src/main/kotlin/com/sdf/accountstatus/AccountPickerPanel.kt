@@ -1,5 +1,6 @@
 package com.sdf.accountstatus
 
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.ui.ColoredTreeCellRenderer
 import com.intellij.ui.SearchTextField
@@ -23,6 +24,7 @@ import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JComboBox
+import javax.swing.JButton
 import javax.swing.JPanel
 import javax.swing.ListSelectionModel
 import javax.swing.tree.DefaultMutableTreeNode
@@ -34,8 +36,9 @@ import javax.swing.tree.TreePath
  */
 internal class AccountPickerPanel(
     private val onAccountChosen: (AccountPickerAccount) -> Unit,
-    private val onRetry: () -> Unit,
-    private val onOpenProjectJson: () -> Unit
+    onRetry: () -> Unit,
+    private val onOpenProjectJson: () -> Unit,
+    private val onRefresh: () -> Unit = onRetry
 ) : JPanel(BorderLayout()) {
     val searchField = SearchTextField(false)
 
@@ -44,7 +47,8 @@ internal class AccountPickerPanel(
     private val treeTable = TreeTable(treeModel)
     private val warningLabel = JBLabel()
     private val stateLabel = JBLabel()
-    private val retryLink = ActionLink("Retry") { onRetry() }
+    private val retryLink = ActionLink("Retry") { refreshAccounts() }
+    private val refreshButton = JButton("Refresh", AllIcons.Actions.Refresh)
     private val clearFiltersLink = ActionLink("Clear filters") {
         clearFilters()
         focusSearch()
@@ -57,6 +61,8 @@ internal class AccountPickerPanel(
     private var filters = AccountPickerFilterState()
     private var updatingFilterControls = false
     private var filterNotice: String? = null
+    private var loading = true
+    private var accountActivationInProgress = false
 
     init {
         preferredSize = JBUI.size(720, 360)
@@ -109,10 +115,21 @@ internal class AccountPickerPanel(
             updateFiltersFromControls(filters.copy(role = selected?.role))
         }
 
+        refreshButton.toolTipText = "Refresh SuiteCloud accounts"
+        refreshButton.accessibleContext.accessibleName = "Refresh SuiteCloud accounts"
+        refreshButton.mnemonic = KeyEvent.VK_R
+        refreshButton.addActionListener { refreshAccounts() }
+
+        val searchRow = JPanel(BorderLayout(JBUI.scale(6), 0)).apply {
+            isOpaque = false
+            add(searchField, BorderLayout.CENTER)
+            add(refreshButton, BorderLayout.EAST)
+        }
+
         val header = JPanel(BorderLayout()).apply {
             isOpaque = false
             border = JBUI.Borders.emptyBottom(6)
-            add(searchField, BorderLayout.NORTH)
+            add(searchRow, BorderLayout.NORTH)
             add(createFilterControls(), BorderLayout.CENTER)
             add(warningLabel, BorderLayout.SOUTH)
         }
@@ -121,7 +138,7 @@ internal class AccountPickerPanel(
 
         stateLabel.foreground = com.intellij.ui.JBColor.GRAY
         stateLabel.accessibleContext.accessibleName = "Account picker status"
-        retryLink.mnemonic = KeyEvent.VK_R
+        retryLink.mnemonic = KeyEvent.VK_T
         retryLink.accessibleContext.accessibleName = "Retry reading SuiteCloud accounts"
         retryLink.isVisible = false
         clearFiltersLink.mnemonic = KeyEvent.VK_C
@@ -150,9 +167,9 @@ internal class AccountPickerPanel(
     }
 
     fun showLoading() {
+        loading = true
         fullModel = null
-        setFilterControlsEnabled(false)
-        treeTable.isEnabled = false
+        updateActionAvailability()
         warningLabel.isVisible = false
         retryLink.isVisible = false
         clearFiltersLink.isVisible = false
@@ -170,18 +187,18 @@ internal class AccountPickerPanel(
     }
 
     fun showAccounts(model: AccountPickerModel) {
+        loading = false
         fullModel = model
-        setFilterControlsEnabled(true)
-        treeTable.isEnabled = true
+        updateActionAvailability()
         retryLink.isVisible = false
         setBusy(false)
         restoreFilterState(filters)
     }
 
     fun showUnavailable(message: String, canRetry: Boolean = true) {
+        loading = false
         fullModel = null
-        setFilterControlsEnabled(false)
-        treeTable.isEnabled = false
+        updateActionAvailability()
         warningLabel.isVisible = false
         clearFiltersLink.isVisible = false
         setBusy(false)
@@ -196,6 +213,29 @@ internal class AccountPickerPanel(
     fun showOperationError(message: String) {
         stateLabel.text = message
         stateLabel.accessibleContext.accessibleDescription = message
+    }
+
+    /** The controller holds this state through confirmation and persistence, including async work. */
+    fun setAccountActivationInProgress(inProgress: Boolean) {
+        accountActivationInProgress = inProgress
+        updateActionAvailability()
+    }
+
+    private fun refreshAccounts() {
+        if (loading || accountActivationInProgress) return
+        // Disable repeat clicks before calling the controller, even if its loader starts later.
+        showLoading()
+        onRefresh()
+    }
+
+    private fun updateActionAvailability() {
+        val canRefresh = !loading && !accountActivationInProgress
+        refreshButton.isEnabled = canRefresh
+        retryLink.isEnabled = canRefresh
+        val canChoose = canRefresh && fullModel != null
+        setFilterControlsEnabled(canChoose)
+        treeTable.isEnabled = canChoose
+        clearFiltersLink.isEnabled = canChoose
     }
 
     fun focusSearch() {

@@ -13,9 +13,13 @@ import com.sdf.accountstatus.domain.AccountEnvironment
 import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Container
+import java.awt.event.ActionEvent
 import java.awt.event.KeyEvent
 import java.awt.event.MouseEvent
 import javax.swing.JComboBox
+import javax.swing.JButton
+import javax.swing.JComponent
+import javax.swing.KeyStroke
 import javax.swing.JPanel
 import javax.swing.SwingUtilities
 import javax.swing.tree.DefaultMutableTreeNode
@@ -146,6 +150,94 @@ class AccountPickerPanelTest {
     }
 
     @Test
+    fun `refresh and retry share the loader while preventing repeated clicks and account activation`() = onEdt {
+        var fallbackRetries = 0
+        var refreshes = 0
+        val activations = mutableListOf<String>()
+        val panel = AccountPickerPanel(
+            { activations.add(it.authenticationId) },
+            { fallbackRetries++ },
+            {},
+            onRefresh = { refreshes++ }
+        )
+        val refresh = panel.refreshButton()
+        assertTrue(refresh.isVisible)
+        assertFalse(refresh.isEnabled)
+        refresh.doClick()
+        assertEquals(0, refreshes)
+
+        panel.showAccounts(model())
+        val filters = AccountPickerFilterState("acme", AccountEnvironment.SANDBOX, "Developer")
+        panel.restoreFilterState(filters)
+        refresh.doClick()
+
+        assertEquals(1, refreshes)
+        assertEquals(filters, panel.filterState())
+        assertEquals("Reading SuiteCloud accounts…", panel.status().text)
+        assertFalse(refresh.isEnabled)
+        assertFalse(panel.table().isEnabled)
+        assertEquals(0, panel.table().rowCount, "Old rows must not appear as refreshed results")
+        refresh.doClick()
+        panel.searchField.textEditor.pressEnter()
+        assertEquals(1, refreshes)
+        assertTrue(activations.isEmpty())
+
+        panel.showUnavailable("The account list could not be read")
+        assertTrue(refresh.isEnabled)
+        panel.link("Retry").doClick()
+        assertEquals(2, refreshes)
+        assertEquals(0, fallbackRetries, "Retry uses the same explicit reload callback as Refresh")
+        assertFalse(refresh.isEnabled)
+
+        panel.showAccounts(model())
+        assertTrue(refresh.isEnabled)
+        assertEquals(filters, panel.filterState())
+        assertEquals("1 of 4 accounts", panel.status().text)
+    }
+
+    @Test
+    fun `refresh defaults to the existing retry callback and remains available for empty and error lists`() = onEdt {
+        var reads = 0
+        val panel = AccountPickerPanel({}, { reads++ }, {})
+        val empty = AccountPickerModelBuilder.build(emptyList(), "removed-current")
+        panel.showAccounts(empty)
+        assertTrue(panel.label("Account picker warning").isVisible)
+        assertEquals("No SuiteCloud accounts are configured.", panel.table().emptyText.text)
+        panel.refreshButton().activateWithSpace()
+        assertEquals(1, reads)
+
+        panel.showUnavailable("Account provider is unavailable", canRetry = false)
+        assertFalse(panel.link("Retry").isVisible)
+        assertTrue(panel.refreshButton().isEnabled)
+        panel.refreshButton().activateWithSpace()
+        assertEquals(2, reads)
+    }
+
+    @Test
+    fun `account activation holds refresh until the controller completes or cancels it`() = onEdt {
+        var refreshes = 0
+        var activations = 0
+        val panel = AccountPickerPanel({ activations++ }, { refreshes++ }, {})
+        panel.showAccounts(model())
+        panel.setAccountActivationInProgress(true)
+
+        assertFalse(panel.refreshButton().isEnabled)
+        assertFalse(panel.table().isEnabled)
+        panel.refreshButton().doClick()
+        panel.searchField.textEditor.pressEnter()
+        assertEquals(0, refreshes)
+        assertEquals(0, activations)
+
+        panel.setAccountActivationInProgress(false)
+        assertTrue(panel.refreshButton().isEnabled)
+        assertTrue(panel.table().isEnabled)
+        panel.searchField.textEditor.pressEnter()
+        assertEquals(1, activations)
+        panel.refreshButton().doClick()
+        assertEquals(1, refreshes)
+    }
+
+    @Test
     fun `restores the entire filter state into a reopened panel before accounts load`() = onEdt {
         val state = AccountPickerFilterState("acme", AccountEnvironment.PRODUCTION, "Developer")
         val original = AccountPickerPanel({}, {}, {})
@@ -199,14 +291,14 @@ class AccountPickerPanelTest {
     }
 
     @Test
-    fun `selectors and clear action are accessible and fit the minimum picker width`() = onEdt {
+    fun `refresh selectors and clear action are accessible and fit the minimum picker width`() = onEdt {
         val panel = AccountPickerPanel({}, {}, {})
         panel.showAccounts(model())
         panel.restoreSearchQuery("acme")
         panel.setSize(panel.minimumSize)
         panel.layoutRecursively()
 
-        listOf(panel.environmentSelector(), panel.roleSelector(), panel.link("Clear filters")).forEach {
+        listOf(panel.refreshButton(), panel.environmentSelector(), panel.roleSelector(), panel.link("Clear filters")).forEach {
             assertTrue(it.isFocusable)
             assertTrue(it.accessibleContext.accessibleName.isNotBlank())
             assertTrue(it.width > 0)
@@ -216,6 +308,10 @@ class AccountPickerPanelTest {
         val labels = panel.descendants().filterIsInstance<JBLabel>().filter { it.labelFor != null }.toList()
         assertEquals(2, labels.size)
         assertTrue(labels.all { it.displayedMnemonic != 0 })
+        assertTrue(panel.refreshButton().mnemonic != 0)
+        assertEquals("Refresh SuiteCloud accounts", panel.refreshButton().toolTipText)
+        assertTrue(panel.refreshButton().icon != null)
+        assertTrue(panel.searchField.width > 200, "Refresh must leave room for the account query")
     }
 
     @Test
@@ -253,6 +349,8 @@ class AccountPickerPanelTest {
     private fun AccountPickerPanel.selector(name: String) = descendants().filterIsInstance<JComboBox<*>>()
         .single { it.accessibleContext.accessibleName == name }
     private fun AccountPickerPanel.table() = descendants().filterIsInstance<TreeTable>().single()
+    private fun AccountPickerPanel.refreshButton() = descendants().filterIsInstance<JButton>()
+        .single { it.accessibleContext.accessibleName == "Refresh SuiteCloud accounts" }
     private fun AccountPickerPanel.status() = label("Account picker status")
     private fun AccountPickerPanel.label(name: String) = descendants().filterIsInstance<JBLabel>()
         .single { it.accessibleContext.accessibleName == name }
@@ -265,6 +363,12 @@ class AccountPickerPanelTest {
     private fun Component.pressEnter() {
         val event = KeyEvent(this, KeyEvent.KEY_PRESSED, 0, 0, KeyEvent.VK_ENTER, '\n')
         keyListeners.forEach { it.keyPressed(event) }
+    }
+    private fun JButton.activateWithSpace() {
+        listOf("pressed SPACE", "released SPACE").forEach { key ->
+            val actionKey = getInputMap(JComponent.WHEN_FOCUSED).get(KeyStroke.getKeyStroke(key))
+            actionMap.get(actionKey).actionPerformed(ActionEvent(this, ActionEvent.ACTION_PERFORMED, key))
+        }
     }
     private fun Container.layoutRecursively() {
         doLayout()
