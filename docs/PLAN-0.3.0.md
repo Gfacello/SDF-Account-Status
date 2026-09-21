@@ -2,7 +2,7 @@
 
 Status: planning. This document proposes release scope; it does not mark features as released.
 
-Execution order, branch strategy, completion criteria, and progress tracking are in [GOAL-0.3.0.md](GOAL-0.3.0.md). The execution goal is active.
+Execution order, branch strategy, completion criteria, and progress tracking are in [GOAL-0.3.0.md](GOAL-0.3.0.md). The execution goal is active following explicit resumption.
 
 Goal: make the active account easier to recognize, filter and refresh accounts from the picker, and open an account in NetSuite from the IDE. Include the selected refactors, validate the complete account-setup flow, and investigate migration from the retired Java CLI before release.
 
