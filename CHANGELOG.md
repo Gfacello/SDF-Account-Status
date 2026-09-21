@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Open the current or selected account in NetSuite from mouse or keyboard context menus, using a locally saved account URL without changing the project default.
+
 ## [0.2.0] - 2026-09-07
 
 ### Added
