@@ -1,6 +1,6 @@
 # Goal: prepare NetSuite SDF Account Status 0.3.0 for release
 
-Status: active. Resumed on 2026-09-21 after goal activation. Release publication and release-tag creation remain outside this preparation goal.
+Status: active after explicit goal resumption on 2026-09-21. Existing local commits and partial changes are preserved. Release publication and release-tag creation remain outside this preparation goal.
 
 ## Objective and completion
 
@@ -35,8 +35,8 @@ The existing CI runs on pull requests and pushes to `main`/`master`. It does not
 - [x] Recheck status and branches, identify any changes made since planning, and preserve all current work.
 - [x] Move/checkpoint the Add an account prototype on the existing `feature/add-account` branch if its state still permits a safe switch. Review and stage only the intended files/hunks, keeping planning changes separate. Preserved as local commit `a776bbe`; no runtime validation is implied by this checkpoint.
 - [x] Prepare the planning/release-workflow documentation on `docs/0.3.0-plan`.
-- [ ] Refresh remote refs after the worktree is safely checkpointed; create subsequent branches from the intended reviewed base.
-- [ ] Run the existing tests and record the actual result, distinguishing fresh execution from cached/up-to-date results.
+- [x] Refresh remote refs after the worktree is safely checkpointed; `git fetch origin` succeeded and `origin/main` remained `a81de01`. Dependent implementation branches start from planning commit `4ea28e9`, whose source code is unchanged from that base.
+- [x] Run the existing tests and record the actual result, distinguishing fresh execution from cached/up-to-date results. `./gradlew test --offline --rerun-tasks --console=plain` succeeded on `4ea28e9`: 79 tests in nine classes, zero failures/errors; all 14 tasks executed. This is baseline validation, not release-candidate verification.
 
 Exit: the prototype and planning work are preserved on appropriate branches, the implementation base is known, and baseline verification is recorded.
 
