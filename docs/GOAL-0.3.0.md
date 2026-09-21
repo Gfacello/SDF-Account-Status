@@ -40,6 +40,8 @@ The existing CI runs on pull requests and pushes to `main`/`master`. It does not
 
 Exit: the prototype and planning work are preserved on appropriate branches, the implementation base is known, and baseline verification is recorded.
 
+Planning review: [PR #3](https://github.com/Gfacello/SDF-Account-Status/pull/3). The full local gate also passed on planning commit `58e2d14` on 2026-09-21: 79 tests and compatible Plugin Verifier results for WebStorm `261.22158.274` and `262.8665.259`. The verification dependencies were downloaded from JetBrains before the successful offline run. These results cover the unchanged 0.2.0 source baseline; candidate verification remains required after integration.
+
 ### 2. Resolve the supported account-provider approach
 
 Branch: `research/node-cli-compatibility`.
