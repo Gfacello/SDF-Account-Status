@@ -2,10 +2,9 @@ package com.sdf.accountstatus.core
 
 internal data class SdfAuthentication(
     val authenticationId: String,
-    val details: String
-) {
+    val details: String,
     val accountDetails: SdfAuthenticationDetails? = SdfAuthenticationDetailsParser.parse(details)
-
+) {
     /** Company name comes first so IntelliJ's speed search matches names as naturally as IDs. */
     val searchableText: String = accountDetails?.let { parsed ->
         listOf(
