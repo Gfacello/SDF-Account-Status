@@ -8,6 +8,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.sdf.accountstatus.core.ProjectJsonUpdateResult
+import com.sdf.accountstatus.core.ProjectJsonParseResult
+import com.sdf.accountstatus.core.SdfProjectJsonParser
 import com.sdf.accountstatus.core.SdfProjectJsonUpdater
 import java.nio.file.Path
 
@@ -36,6 +38,10 @@ internal class IntellijProjectJsonGateway(
                 saveDocument(document)
             }
             check(!manager.isDocumentUnsaved(document)) { "project.json was not saved" }
+            val saved = SdfProjectJsonParser.inspect(document.text)
+            check(saved is ProjectJsonParseResult.Configured && saved.authenticationId == authenticationId) {
+                "project.json default changed during save"
+            }
             result
         } catch (exception: Exception) {
             // Save listeners may have changed the document. Never discard their newer content.
@@ -49,7 +55,9 @@ internal class IntellijProjectJsonGateway(
                 }
             }
             if (exception is ProcessCanceledException) throw exception
-            invalid("Unable to update project.json.")
+            ProjectJsonUpdateResult.Invalid(
+                "Unable to save the selected account. Check project.json before trying again."
+            )
         }
     }
 

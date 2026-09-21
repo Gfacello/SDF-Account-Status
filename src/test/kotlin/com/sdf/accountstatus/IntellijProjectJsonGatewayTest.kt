@@ -1,6 +1,7 @@
 package com.sdf.accountstatus
 
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
@@ -123,6 +124,30 @@ class IntellijProjectJsonGatewayTest {
     }
 
     @Test
+    fun `saved listener change to default is not reported as selected account success`() = onEdt {
+        val changed = """{"defaultAuthId":"listener","name":"Newer content"}"""
+        val result = gateway {
+            it.setText(changed)
+            FileDocumentManager.getInstance().saveDocument(it)
+        }.update("sandbox")
+        assertIs<ProjectJsonUpdateResult.Invalid>(result)
+        assertEquals(changed, document.text)
+        assertEquals(changed, Files.readString(path))
+        assertFalse(FileDocumentManager.getInstance().isDocumentUnsaved(document))
+    }
+
+    @Test
+    fun `save listener may persist unrelated edits while preserving selected default`() = onEdt {
+        val result = gateway {
+            it.setText(it.text.replace("Project", "Listener updated name"))
+            FileDocumentManager.getInstance().saveDocument(it)
+        }.update("sandbox")
+        assertIs<ProjectJsonUpdateResult.Updated>(result)
+        assertEquals("""{"defaultAuthId":"sandbox","name":"Listener updated name"}""", document.text)
+        assertEquals(document.text, Files.readString(path))
+    }
+
+    @Test
     fun `cancellation rolls back and propagates to the platform`() = onEdt {
         assertFailsWith<ProcessCanceledException> {
             gateway { throw ProcessCanceledException() }.update("sandbox")
@@ -137,6 +162,6 @@ class IntellijProjectJsonGatewayTest {
 
     private fun onEdt(action: () -> Unit) {
         val application = ApplicationManager.getApplication()
-        if (application.isDispatchThread) action() else application.invokeAndWait(action)
+        if (application.isDispatchThread) action() else application.invokeAndWait(action, ModalityState.nonModal())
     }
 }
