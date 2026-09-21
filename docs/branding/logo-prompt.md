@@ -3,7 +3,7 @@
 Use this prompt in ChatGPT image generation:
 
 ---
-Design a modern, minimal SVG logo for a JetBrains WebStorm plugin called "SDF Account Status".
+Design a modern, minimal SVG logo for a JetBrains WebStorm plugin called "NetSuite SDF Account Status".
 
 Context:
 - Plugin shows the active NetSuite SDF account in the IDE status bar.

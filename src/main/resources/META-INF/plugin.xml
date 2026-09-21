@@ -1,29 +1,38 @@
-<idea-plugin>
+<idea-plugin url="https://github.com/Gfacello/SDF-Account-Status">
     <id>com.sdf.accountstatus</id>
-    <name>SDF Account Status</name>
-    <vendor email="support@example.com" url="https://example.com">SDF Team</vendor>
+    <name>NetSuite SDF Account Status</name>
+    <vendor url="https://github.com/Gfacello/SDF-Account-Status">gfacello</vendor>
 
     <description>
         <p>Shows the active NetSuite SuiteCloud Development Framework (SDF) account from <code>project.json</code> directly in the WebStorm status bar.</p>
         <ul>
             <li>Auto-detects <code>defaultAuthId</code> (and legacy <code>DefaultAuthID</code>)</li>
             <li>Auto-refreshes when the account changes in SuiteCloud settings</li>
-            <li>Click the label to open <code>project.json</code></li>
+            <li>Click the label to search and select a configured SuiteCloud authentication ID</li>
+            <li>Search by authentication ID, account name, account number, role, or environment</li>
+            <li>Browse combined account-family/customer groups with aligned account, environment, and role columns</li>
+            <li>See related-account recommendations and confirm before switching to production</li>
+            <li>Open <code>project.json</code> directly from the account picker</li>
         </ul>
         <h3>Environment Colors</h3>
         <ul>
             <li><b>Green</b>: Sandbox</li>
             <li><b>Red + critical icon</b>: Production</li>
-            <li><b>Yellow</b>: Unknown</li>
+            <li><b>Yellow</b>: Release Preview or unknown/unverified</li>
         </ul>
+        <p><b>Requirement:</b> The account picker uses an existing local SuiteCloud CLI for Java installation and invokes only its read-only <code>manageauth -list</code> operation. The status display remains available when the CLI is unavailable.</p>
+        <p>The plugin does not read SuiteCloud credential contents, log CLI output, or provide automatic telemetry. Exception reports are sent to JetBrains Marketplace only when the user explicitly submits one from the IDE.</p>
         <p><small>Independent project; not affiliated with or endorsed by Oracle.</small></p>
     </description>
 
     <depends>com.intellij.modules.platform</depends>
+    <depends>JavaScript</depends>
+    <depends>com.intellij.modules.webstorm</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- id must match STATUS_BAR_WIDGET_ID in com.sdf.accountstatus.SdfAccountStatusIds -->
         <statusBarWidgetFactory id="SdfAccountStatusWidget"
                                 implementation="com.sdf.accountstatus.SdfAccountStatusBarWidgetFactory"/>
+        <errorHandler implementation="com.intellij.diagnostic.JetBrainsMarketplaceErrorReportSubmitter"/>
     </extensions>
 </idea-plugin>
