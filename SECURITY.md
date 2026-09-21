@@ -31,7 +31,7 @@ The plugin is designed around these constraints:
 - Selecting an account changes the supported authentication-ID field or fields; unrelated JSON values are retained.
 - The plugin performs no automatic analytics or telemetry.
 
-The plugin registers JetBrains Marketplace's built-in exception reporter. A report is transmitted only after a user explicitly reviews and submits it through WebStorm's error-reporting UI. JetBrains may receive diagnostic metadata, stack traces, user comments, and user-selected attachments according to that consent flow.
+The plugin registers JetBrains Marketplace's built-in exception reporter. Reports can be submitted manually or automatically according to WebStorm's error-reporting preferences. JetBrains may receive diagnostic metadata, stack traces, user comments, and user-selected attachments. This IDE-managed reporting is separate from plugin analytics; review the IDE's reporting settings to control automatic submissions. See [JetBrains error-handler documentation](https://plugins.jetbrains.com/docs/marketplace/error-handler.html).
 
 ## Dependency considerations
 
