@@ -15,11 +15,13 @@ import com.intellij.util.ui.JBUI
 import com.sdf.accountstatus.domain.AccountEnvironment
 import java.awt.BorderLayout
 import java.awt.FlowLayout
+import java.awt.Point
 import java.awt.event.KeyAdapter
 import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.JPanel
+import javax.swing.JComponent
 import javax.swing.ListSelectionModel
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.TreePath
@@ -31,7 +33,8 @@ import javax.swing.tree.TreePath
 internal class AccountPickerPanel(
     private val onAccountChosen: (AccountPickerAccount) -> Unit,
     private val onRetry: () -> Unit,
-    private val onOpenProjectJson: () -> Unit
+    private val onOpenProjectJson: () -> Unit,
+    private val onAccountContext: ((AccountPickerAccount, JComponent, Point) -> Unit)? = null
 ) : JPanel(BorderLayout()) {
     val searchField = SearchTextField(false)
 
@@ -200,6 +203,19 @@ internal class AccountPickerPanel(
         treeTable.columnModel.getColumn(2).preferredWidth = JBUI.scale(105)
         treeTable.columnModel.getColumn(3).preferredWidth = JBUI.scale(150)
         treeTable.addMouseListener(object : MouseAdapter() {
+            override fun mousePressed(event: MouseEvent) = showContextIfRequested(event)
+            override fun mouseReleased(event: MouseEvent) = showContextIfRequested(event)
+
+            private fun showContextIfRequested(event: MouseEvent) {
+                if (!event.isPopupTrigger) return
+                val row = treeTable.rowAtPoint(event.point)
+                if (row >= 0) {
+                    treeTable.setRowSelectionInterval(row, row)
+                    showSelectedAccountContext(event.point)
+                }
+                event.consume()
+            }
+
             override fun mouseClicked(event: MouseEvent) {
                 if (event.button == MouseEvent.BUTTON1 && event.clickCount == 2) {
                     // The embedded tree owns disclosure clicks; double-click only activates leaves.
@@ -209,12 +225,30 @@ internal class AccountPickerPanel(
         })
         treeTable.addKeyListener(object : KeyAdapter() {
             override fun keyPressed(event: KeyEvent) {
+                if (event.keyCode == KeyEvent.VK_CONTEXT_MENU ||
+                    event.keyCode == KeyEvent.VK_F10 && event.isShiftDown) {
+                    val row = treeTable.selectedRow
+                    if (row >= 0) {
+                        val bounds = treeTable.getCellRect(row, 0, true)
+                        showSelectedAccountContext(Point(bounds.x, bounds.y + bounds.height))
+                    }
+                    event.consume()
+                    return
+                }
                 if (event.keyCode == KeyEvent.VK_ENTER) {
                     activateSelectedRow()
                     event.consume()
                 }
             }
         })
+    }
+
+    private fun showSelectedAccountContext(point: Point) {
+        if (fullModel == null) return
+        val path = treeTable.tree.getPathForRow(treeTable.selectedRow) ?: return
+        val node = path.lastPathComponent as? DefaultMutableTreeNode ?: return
+        val account = (node.userObject as? PickerTreeValue.Account)?.model ?: return
+        onAccountContext?.invoke(account, treeTable, point)
     }
 
     private fun applyFilter() {

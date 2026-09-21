@@ -1,6 +1,7 @@
 package com.sdf.accountstatus
 
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.progress.ProcessCanceledException
@@ -30,6 +31,7 @@ import com.sdf.accountstatus.domain.AccountWidgetState
 import com.sdf.accountstatus.domain.WidgetTone
 import java.awt.Color
 import java.awt.Cursor
+import java.awt.Point
 import java.awt.event.KeyAdapter
 import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
@@ -72,6 +74,7 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
         ?.let { Path.of(it, "project.json").toAbsolutePath().normalize() }
     private val resolver = SdfAccountStatusResolver(projectJsonPath)
     private val projectJsonGateway = IntellijProjectJsonGateway(project, projectJsonPath)
+    private val browserActions = AccountBrowserActions(project) { isDisposed || project.isDisposed }
     private val stateController = AccountStateController(
         provider = { SuiteCloudAuthListLoader().load() },
         readProject = {
@@ -164,24 +167,50 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
         label.border = JBUI.Borders.empty(0, 4)
         label.cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
         label.isFocusable = true
+        label.putClientProperty("html.disable", true)
         label.accessibleContext.accessibleName = "NetSuite SDF account status"
         label.accessibleContext.accessibleDescription =
             "Shows the current SDF authentication ID. Press Enter or Space to choose another account."
         label.addMouseListener(object : MouseAdapter() {
+            override fun mousePressed(event: MouseEvent) = showContextIfRequested(event)
+            override fun mouseReleased(event: MouseEvent) = showContextIfRequested(event)
+
+            private fun showContextIfRequested(event: MouseEvent) {
+                if (event.isPopupTrigger) {
+                    showStatusContextMenu(event.point)
+                    event.consume()
+                }
+            }
+
             override fun mouseClicked(event: MouseEvent) {
-                if (event.clickCount == 1 && SwingUtilities.isLeftMouseButton(event)) {
+                if (event.clickCount == 1 && SwingUtilities.isLeftMouseButton(event) &&
+                    !event.isPopupTrigger && !event.isControlDown) {
                     showAccountPicker()
                 }
             }
         })
         label.addKeyListener(object : KeyAdapter() {
             override fun keyPressed(event: KeyEvent) {
+                if (event.keyCode == KeyEvent.VK_CONTEXT_MENU ||
+                    event.keyCode == KeyEvent.VK_F10 && event.isShiftDown) {
+                    showStatusContextMenu(Point(0, label.height))
+                    event.consume()
+                    return
+                }
                 if (event.keyCode == KeyEvent.VK_ENTER || event.keyCode == KeyEvent.VK_SPACE) {
                     showAccountPicker()
                     event.consume()
                 }
             }
         })
+    }
+
+    private fun showStatusContextMenu(point: Point) {
+        if (isDisposed || project.isDisposed) return
+        val target = BrowserAccountTarget.from(stateController.state.currentAuthentication)
+        ActionManager.getInstance().createActionPopupMenu(
+            "SdfAccountStatus.Context", browserActions.group { target }
+        ).component.show(label, point.x, point.y)
     }
 
     private fun showAccountPicker(restoredQuery: String = "") {
@@ -200,6 +229,12 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
             onOpenProjectJson = {
                 if (!popup.isDisposed) popup.cancel()
                 openProjectJson()
+            },
+            onAccountContext = { account, component, point ->
+                val target = BrowserAccountTarget.from(account.authentication)
+                ActionManager.getInstance().createActionPopupMenu(
+                    "SdfAccountPicker.Context", browserActions.group { target }
+                ).component.show(component, point.x, point.y)
             }
         )
 

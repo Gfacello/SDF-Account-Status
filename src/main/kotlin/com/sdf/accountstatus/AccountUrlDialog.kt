@@ -31,7 +31,7 @@ internal class AccountUrlDialog(
     override fun createCenterPanel(): JComponent = JPanel(BorderLayout(0, JBUI.scale(8))).apply {
         add(JPanel().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
-            add(JBLabel(accountLabel))
+            add(JBLabel(accountLabel).apply { putClientProperty("html.disable", true) })
             add(JBLabel("Copy the NetSuite UI URL from Setup > Company > Company Information > Company URLs."))
             add(JBLabel("The browser uses its existing session or normal sign-in; it does not select your CLI role."))
         }, BorderLayout.NORTH)

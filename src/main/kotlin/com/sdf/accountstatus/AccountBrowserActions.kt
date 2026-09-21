@@ -24,6 +24,7 @@ internal class AccountBrowserActions(project: Project, isDisposed: () -> Boolean
     /** Resolve at invocation for a status menu; capture a row target for a picker context menu. */
     fun group(target: () -> BrowserAccountTarget?): DefaultActionGroup = DefaultActionGroup().apply {
         val name = target()?.let { "${it.accountName} (${it.accountId})" } ?: "Current account"
+        addSeparator(name)
         add(object : DumbAwareAction("Open in NetSuite", "Open $name in your default browser", null) {
             override fun actionPerformed(event: AnActionEvent) = controller.open(target())
         })
