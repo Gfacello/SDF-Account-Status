@@ -1,4 +1,5 @@
 import org.gradle.jvm.tasks.Jar
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 
@@ -19,10 +20,13 @@ repositories {
 
 dependencies {
     testImplementation(kotlin("test"))
+    // IntelliJ platform fixtures and its Jupiter session listener still use JUnit 3/4 classes.
+    testImplementation("junit:junit:4.13.2")
 
     intellijPlatform {
         webstorm("2026.1")
         bundledPlugin("JavaScript")
+        testFramework(TestFrameworkType.Platform)
         pluginVerifier()
         zipSigner()
     }

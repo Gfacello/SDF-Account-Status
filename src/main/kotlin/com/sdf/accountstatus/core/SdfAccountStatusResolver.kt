@@ -21,89 +21,51 @@ internal object NioProjectJsonDataSource : ProjectJsonDataSource {
     override fun lastModifiedMillis(path: Path): Long = Files.getLastModifiedTime(path).toMillis()
 }
 
+internal data class ProjectJsonSnapshot(
+    val authenticationId: String?,
+    val problem: AccountWidgetState?,
+    val lastModifiedMillis: Long,
+    val changedWhileReading: Boolean = false
+) {
+    companion object {
+        fun configured(authenticationId: String, lastModifiedMillis: Long = Long.MIN_VALUE) =
+            ProjectJsonSnapshot(authenticationId, null, lastModifiedMillis)
+    }
+}
+
 internal class SdfAccountStatusResolver(
     private val projectJsonPath: Path?,
     private val dataSource: ProjectJsonDataSource = NioProjectJsonDataSource
 ) {
-    fun resolve(
-        knownEnvironments: Map<String, AccountEnvironment> = emptyMap()
-    ): AccountWidgetState {
-        val path = projectJsonPath
-            ?: return AccountWidgetState(
-                text = "no project",
-                tooltip = "Project path not available",
-                tone = WidgetTone.ERROR
-            )
-
+    fun readSnapshot(): ProjectJsonSnapshot {
+        val path = projectJsonPath ?: return problem("no project", "Project path not available")
         val exists = runCatching { dataSource.exists(path) }.getOrElse {
-            return AccountWidgetState(
-                text = "read error",
-                tooltip = "Cannot access ${path.toAbsolutePath()}: ${it.message}",
-                tone = WidgetTone.ERROR
-            )
+            return problem("read error", "Cannot access ${path.toAbsolutePath()}: ${it.message}")
         }
-        if (!exists) {
-            return AccountWidgetState(
-                text = "project.json missing",
-                tooltip = "project.json was not found at ${path.toAbsolutePath()}",
-                tone = WidgetTone.ERROR
-            )
-        }
+        if (!exists) return problem("project.json missing", "project.json was not found at ${path.toAbsolutePath()}")
 
+        // Capture both stamps around the single content read. A changed read is retried, not published.
+        val before = getLastModifiedMillisOrMinusOne()
         val content = runCatching { dataSource.read(path) }.getOrElse {
-            return AccountWidgetState(
-                text = "read error",
-                tooltip = "Cannot read ${path.toAbsolutePath()}: ${it.message}",
-                tone = WidgetTone.ERROR
-            )
+            return problem("read error", "Cannot read ${path.toAbsolutePath()}: ${it.message}", stamp = before)
         }
-
-        val account = when (val parsed = SdfProjectJsonParser.inspect(content)) {
-            is ProjectJsonParseResult.Configured -> parsed.authenticationId
-            ProjectJsonParseResult.MissingKey -> {
-                return AccountWidgetState(
-                    text = "defaultAuthId not set",
-                    tooltip = "Set defaultAuthId in project.json",
-                    tone = WidgetTone.WARNING
-                )
-            }
-            ProjectJsonParseResult.InvalidJson -> {
-                return AccountWidgetState(
-                    text = "project.json invalid",
-                    tooltip = "project.json must contain a valid JSON object",
-                    tone = WidgetTone.ERROR
-                )
-            }
-            is ProjectJsonParseResult.InvalidKeyType -> {
-                return AccountWidgetState(
-                    text = "defaultAuthId invalid",
-                    tooltip = "${parsed.key} must be a non-empty JSON string in project.json",
-                    tone = WidgetTone.ERROR
-                )
-            }
-            is ProjectJsonParseResult.BlankAuthenticationId -> {
-                return AccountWidgetState(
-                    text = "defaultAuthId empty",
-                    tooltip = "${parsed.key} must be a non-empty JSON string in project.json",
-                    tone = WidgetTone.WARNING
-                )
-            }
+        val after = getLastModifiedMillisOrMinusOne()
+        val snapshot = when (val parsed = SdfProjectJsonParser.inspect(content)) {
+            is ProjectJsonParseResult.Configured -> ProjectJsonSnapshot.configured(parsed.authenticationId, before)
+            ProjectJsonParseResult.MissingKey -> problem("defaultAuthId not set", "Set defaultAuthId in project.json", WidgetTone.WARNING, before)
+            ProjectJsonParseResult.InvalidJson -> problem("project.json invalid", "project.json must contain a valid JSON object", stamp = before)
+            is ProjectJsonParseResult.InvalidKeyType -> problem("defaultAuthId invalid", "${parsed.key} must be a non-empty JSON string in project.json", stamp = before)
+            is ProjectJsonParseResult.BlankAuthenticationId -> problem("defaultAuthId empty", "${parsed.key} must be a non-empty JSON string in project.json", WidgetTone.WARNING, before)
         }
+        return snapshot.copy(changedWhileReading = before != after)
+    }
 
-        val environment = knownEnvironments[account] ?: AccountEnvironment.UNKNOWN
-        val tone = when (environment) {
-            AccountEnvironment.SANDBOX -> WidgetTone.OK
-            AccountEnvironment.PRODUCTION -> WidgetTone.ERROR
-            AccountEnvironment.RELEASE_PREVIEW,
-            AccountEnvironment.UNKNOWN -> WidgetTone.WARNING
-        }
-
-        return AccountWidgetState(
-            text = account,
-            tooltip = "Current SDF default account ($account) - ${environment.label}. Click to choose an account",
-            tone = tone,
-            showCriticalIcon = environment == AccountEnvironment.PRODUCTION
-        )
+    /** Compatibility entry point for callers interested only in the presentation. */
+    fun resolve(knownEnvironments: Map<String, AccountEnvironment> = emptyMap()): AccountWidgetState {
+        val snapshot = readSnapshot()
+        snapshot.problem?.let { return it }
+        val id = requireNotNull(snapshot.authenticationId)
+        return SdfAccountStatusPresentation.forAuthentication(id, knownEnvironments[id] ?: AccountEnvironment.UNKNOWN)
     }
 
     fun getLastModifiedMillisOrMinusOne(): Long {
@@ -112,4 +74,11 @@ internal class SdfAccountStatusResolver(
             if (!dataSource.exists(path)) -1L else dataSource.lastModifiedMillis(path)
         }.getOrDefault(-1L)
     }
+
+    private fun problem(
+        text: String,
+        tooltip: String,
+        tone: WidgetTone = WidgetTone.ERROR,
+        stamp: Long = -1L
+    ) = ProjectJsonSnapshot(null, AccountWidgetState(text, tooltip, tone), stamp)
 }
