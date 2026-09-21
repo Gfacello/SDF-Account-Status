@@ -87,6 +87,20 @@ class SdfAccountRecommenderTest {
     }
 
     @Test
+    fun `recommends Oracle suffix variants in the same family despite different customer names`() {
+        val accounts = listOf(
+            authentication("current", "123456: Original Company [Administrator]"),
+            authentication("sandbox", "123456_SB: Sandbox Company [Administrator]"),
+            authentication("release-preview", "123456_RP2: Preview Company [Administrator]"),
+            authentication("unrelated", "999999_RP2: Other Company [Administrator]")
+        )
+        assertEquals(
+            listOf("sandbox", "release-preview"),
+            SdfAccountRecommender.recommend(accounts, "current").map(SdfAuthentication::authenticationId)
+        )
+    }
+
+    @Test
     fun `returns deterministic authentication ID ordering and observes the limit`() {
         val accounts = listOf(
             authentication("current", "123456_SB3: Example Company [Administrator]"),
