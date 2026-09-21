@@ -1,3 +1,4 @@
+import org.gradle.jvm.tasks.Jar
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 
@@ -7,7 +8,7 @@ plugins {
 }
 
 group = "com.sdf"
-version = "0.1.1"
+version = "0.2.0"
 
 repositories {
     mavenCentral()
@@ -39,25 +40,29 @@ intellijPlatform {
         }
 
         description = """
-            <p>Shows the active NetSuite SuiteCloud Development Framework (SDF) account from <code>project.json</code> directly in the WebStorm status bar.</p>
+            <p>Shows the active NetSuite SuiteCloud Development Framework (SDF) authentication ID in the WebStorm status bar and lets you switch configured accounts without leaving the IDE.</p>
             <ul>
-              <li>Auto-detects <code>defaultAuthId</code> (and legacy <code>DefaultAuthID</code>)</li>
-              <li>Auto-refreshes when the account changes in SuiteCloud settings</li>
-              <li>Click the label to open <code>project.json</code></li>
+              <li>Reads <code>defaultAuthId</code> and legacy <code>DefaultAuthID</code></li>
+              <li>Loads configured authentication IDs with the read-only <code>sdfcli manageauth -list</code> operation</li>
+              <li>Searches accounts and groups them under a combined account-family/customer row</li>
+              <li>Confirms production switches and preserves unrelated <code>project.json</code> content</li>
+              <li>Keeps <code>Open project.json</code> fixed in the popup footer</li>
             </ul>
-            <h3>Environment Colors</h3>
-            <ul>
-              <li><b>Green</b>: Sandbox</li>
-              <li><b>Red + critical icon</b>: Production</li>
-              <li><b>Yellow</b>: Unknown</li>
-            </ul>
+            <p>The plugin does not read SuiteCloud credential contents, log raw CLI output, or send automatic telemetry. Exception reports are sent to JetBrains Marketplace only when the user explicitly submits one.</p>
             <p><small>Independent project; not affiliated with or endorsed by Oracle.</small></p>
         """.trimIndent()
+
         changeNotes = """
+            <p><b>Version 0.2.0</b></p>
             <ul>
-              <li>Adds compatibility with WebStorm 2026.2 and future IDE builds</li>
-              <li>Removes deprecated status-bar API references from the compiled plugin</li>
-              <li>Makes the NetSuite and WebStorm focus explicit in the Marketplace description</li>
+              <li>Adds a searchable account picker backed by the read-only SuiteCloud CLI account-list command</li>
+              <li>Searches authentication IDs, account names, account numbers, roles, and environments</li>
+              <li>Groups accounts under combined account-family/customer rows in collapsible, aligned sections</li>
+              <li>Highlights the current account, recommends related environments, and confirms production switches</li>
+              <li>Uses a compact, resizable chooser with a fixed <code>Open project.json</code> action</li>
+              <li>Safely updates <code>project.json</code> while preserving unrelated JSON values</li>
+              <li>Fixes the Swing accessibility crash seen when opening the chooser</li>
+              <li>Adds opt-in JetBrains Marketplace exception reporting and production documentation</li>
             </ul>
         """.trimIndent()
     }
@@ -89,6 +94,12 @@ intellijPlatform {
 }
 
 tasks {
+    named<Jar>("jar") {
+        from(rootProject.file("LICENSE")) {
+            into("META-INF")
+        }
+    }
+
     test {
         useJUnitPlatform()
     }
