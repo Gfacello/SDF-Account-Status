@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "com.sdf"
-version = "0.2.0"
+version = "0.3.0"
 
 repositories {
     mavenCentral()
@@ -44,29 +44,31 @@ intellijPlatform {
         }
 
         description = """
-            <p>Shows the active NetSuite SuiteCloud Development Framework (SDF) authentication ID in the WebStorm status bar and lets you switch configured accounts without leaving the IDE.</p>
+            <p>Recognize, choose, and open your NetSuite SuiteCloud Development Framework (SDF) accounts directly from WebStorm.</p>
             <ul>
-              <li>Reads <code>defaultAuthId</code> and legacy <code>DefaultAuthID</code></li>
-              <li>Loads configured authentication IDs with the read-only <code>sdfcli manageauth -list</code> operation</li>
-              <li>Searches accounts and groups them under a combined account-family/customer row</li>
-              <li>Confirms production switches and preserves unrelated <code>project.json</code> content</li>
-              <li>Keeps <code>Open project.json</code> fixed in the popup footer</li>
+              <li>Show the authentication ID or company, environment, and role in the status bar</li>
+              <li>Search and filter accounts by environment and role, with current and related accounts grouped together</li>
+              <li>Refresh accounts without closing the picker or losing valid filters</li>
+              <li>Open the current or selected account using a locally saved HTTPS NetSuite UI URL</li>
+              <li>Start account setup through Oracle's WebStorm Account Management settings</li>
+              <li>Confirm production switches and preserve unrelated <code>project.json</code> content</li>
             </ul>
+            <p><b>Requirements:</b> Account discovery uses an existing SuiteCloud CLI for Node.js installation and its supported Node.js/JDK runtimes. Legacy Java CLI discovery is available as an explicit choice. Account setup requires Oracle's SuiteCloud IDE Plug-in for WebStorm. The authentication ID from <code>project.json</code> remains visible when account discovery is unavailable.</p>
             <p>The plugin does not read SuiteCloud credential contents, log raw CLI output, or send automatic telemetry. The IDE may submit exception reports to JetBrains Marketplace manually or automatically according to its error-reporting settings.</p>
             <p><small>Independent project; not affiliated with or endorsed by Oracle.</small></p>
         """.trimIndent()
 
         changeNotes = """
-            <p><b>Version 0.2.0</b></p>
+            <p><b>Version 0.3.0</b></p>
             <ul>
-              <li>Adds a searchable account picker backed by the read-only SuiteCloud CLI account-list command</li>
-              <li>Searches authentication IDs, account names, account numbers, roles, and environments</li>
-              <li>Groups accounts under combined account-family/customer rows in collapsible, aligned sections</li>
-              <li>Highlights the current account, recommends related environments, and confirms production switches</li>
-              <li>Uses a compact, resizable chooser with a fixed <code>Open project.json</code> action</li>
-              <li>Safely updates <code>project.json</code> while preserving unrelated JSON values</li>
-              <li>Fixes the Swing accessibility crash seen when opening the chooser</li>
-              <li>Adds JetBrains Marketplace exception reporting controlled by IDE preferences and production documentation</li>
+              <li>Refresh accounts in place and combine environment, role, and text filters</li>
+              <li>Choose a persistent detailed status display with complete account tooltips</li>
+              <li>Open an account in NetSuite through a locally configured account URL</li>
+              <li>Start Add an account through Oracle's Account Management settings</li>
+              <li>Use the Node.js SuiteCloud CLI, with local path settings and an explicit legacy provider option</li>
+              <li>Preserve filters after cancelled production confirmation and reject stale refresh results</li>
+              <li>Improve document-save verification, accessibility, and workflow regression coverage</li>
+              <li>Clarify IDE-controlled exception reporting</li>
             </ul>
         """.trimIndent()
     }
