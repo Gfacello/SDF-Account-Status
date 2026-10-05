@@ -3,6 +3,7 @@ package com.sdf.accountstatus
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
@@ -26,7 +27,7 @@ import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import com.sdf.accountstatus.core.SdfAccountStatusResolver
-import com.sdf.accountstatus.core.SuiteCloudAuthListLoader
+import com.sdf.accountstatus.core.SdfAccountStatusPresentation
 import com.sdf.accountstatus.domain.AccountWidgetState
 import com.sdf.accountstatus.domain.WidgetTone
 import java.awt.Color
@@ -74,9 +75,10 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
         ?.let { Path.of(it, "project.json").toAbsolutePath().normalize() }
     private val resolver = SdfAccountStatusResolver(projectJsonPath)
     private val projectJsonGateway = IntellijProjectJsonGateway(project, projectJsonPath)
+    private val preferences = service<SdfAccountPreferences>()
     private val browserActions = AccountBrowserActions(project) { isDisposed || project.isDisposed }
     private val stateController = AccountStateController(
-        provider = { SuiteCloudAuthListLoader().load() },
+        provider = ConfiguredAccountProvider(preferences),
         readProject = {
             val snapshot = resolver.readSnapshot()
             try {
@@ -92,7 +94,7 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
         isUnavailable = { isDisposed || project.isDisposed },
         onStateChanged = { state ->
             lastModifiedMillis = state.project.lastModifiedMillis
-            applyState(state.presentation)
+            renderStatus(state)
             accountPickerPanel?.let(::renderAccountListState)
         }
     )
@@ -103,7 +105,16 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
         later = { ApplicationManager.getApplication().invokeLater(it) },
         onSaved = stateController::accountSaved
     )
+    private val setupController = AccountSetupController(
+        isUnavailable = { isDisposed || project.isDisposed },
+        later = { ApplicationManager.getApplication().invokeLater(it) },
+        openSettings = { SuiteCloudAccountSetup.open(project) },
+        reloadAccounts = { loadAccountsInBackground(force = true) },
+        reopenPicker = { showAccountPicker(it) },
+        showError = { showPopupMessage(it) }
+    )
     private val connection = project.messageBus.connect(this)
+    private val preferencesConnection = ApplicationManager.getApplication().messageBus.connect(this)
     private val pollingTask: ScheduledFuture<*>
 
     @Volatile
@@ -117,6 +128,16 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
 
     init {
         configureStatusLabel()
+        preferencesConnection.subscribe(AccountPreferencesListener.TOPIC, AccountPreferencesListener { change ->
+            onUiThread {
+                if (!isDisposed && !project.isDisposed) {
+                    when (change) {
+                        AccountPreferenceChange.PROVIDER -> stateController.loadAccounts(force = true)
+                        AccountPreferenceChange.DISPLAY_STYLE -> renderStatus(stateController.state)
+                    }
+                }
+            }
+        })
         refreshAsync()
         loadAccountsInBackground()
 
@@ -159,6 +180,7 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
             }
         }
         pollingTask.cancel(true)
+        preferencesConnection.dispose()
         connection.dispose()
     }
 
@@ -208,12 +230,17 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
     private fun showStatusContextMenu(point: Point) {
         if (isDisposed || project.isDisposed) return
         val target = BrowserAccountTarget.from(stateController.state.currentAuthentication)
+        val actions = browserActions.group { target }.apply {
+            addSeparator()
+            add(AccountStatusStyleActions(preferences) {}.group())
+            add(AccountProviderSettingsActions(project, preferences, { isDisposed || project.isDisposed }).group())
+        }
         ActionManager.getInstance().createActionPopupMenu(
-            "SdfAccountStatus.Context", browserActions.group { target }
+            "SdfAccountStatus.Context", actions
         ).component.show(label, point.x, point.y)
     }
 
-    private fun showAccountPicker(restoredQuery: String = "") {
+    private fun showAccountPicker(restoredFilters: AccountPickerFilterState = AccountPickerFilterState()) {
         if (isDisposed || project.isDisposed) return
         val existingPopup = accountPopup
         if (existingPopup != null && existingPopup.isVisible && !existingPopup.isDisposed) return
@@ -222,10 +249,7 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
         lateinit var panel: AccountPickerPanel
         panel = AccountPickerPanel(
             onAccountChosen = { account -> handleAccountSelection(account, popup, panel) },
-            onRetry = {
-                panel.showLoading()
-                loadAccountsInBackground(force = true)
-            },
+            onRetry = { loadAccountsInBackground(force = true) },
             onOpenProjectJson = {
                 if (!popup.isDisposed) popup.cancel()
                 openProjectJson()
@@ -235,6 +259,11 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
                 ActionManager.getInstance().createActionPopupMenu(
                     "SdfAccountPicker.Context", browserActions.group { target }
                 ).component.show(component, point.x, point.y)
+            },
+            onAddAccount = {
+                setupController.start(panel.filterState()) {
+                    if (!popup.isDisposed) popup.cancel()
+                }
             }
         )
 
@@ -264,9 +293,9 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
         accountPopup = popup
         accountPickerPanel = panel
         renderAccountListState(panel)
+        panel.restoreFilterState(restoredFilters)
         popup.show(JBPopupFactory.getInstance().guessBestPopupLocation(label))
         panel.focusSearch()
-        if (restoredQuery.isNotEmpty()) panel.restoreSearchQuery(restoredQuery)
     }
 
     private fun renderAccountListState(panel: AccountPickerPanel) {
@@ -288,34 +317,36 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
         popup: JBPopup,
         panel: AccountPickerPanel
     ) {
-        val query = panel.searchQuery()
-        controller.selectAccount(account, object : AccountSelectionUi {
-            override fun closePicker() {
-                if (!popup.isDisposed) popup.cancel()
-            }
-
-            override fun confirmProduction(account: AccountPickerAccount): Boolean =
-                Messages.showYesNoDialog(
-                    project,
-                    buildString {
-                        appendLine("Switch the default SDF account to production?")
-                        appendLine()
-                        appendLine("Authentication ID: ${account.authenticationId}")
-                        appendLine("Account: ${account.accountName} (${account.accountId})")
-                        append("Role: ${account.role}")
-                    },
-                    "Confirm Production Account",
-                    "Switch to Production",
-                    "Cancel",
-                    Messages.getWarningIcon()
-                ) == Messages.YES
-
-            override fun restorePicker() = showAccountPicker(restoredQuery = query)
-
-            override fun showError(message: String) {
-                if (!popup.isDisposed) panel.showOperationError(message) else showPopupMessage(message)
-            }
-        })
+        panel.setAccountActivationInProgress(true)
+        try {
+            controller.selectAccount(account, AccountPickerSelectionUi(
+                panel = panel,
+                isPickerOpen = { !popup.isDisposed },
+                close = {
+                    if (!popup.isDisposed) popup.cancel()
+                },
+                confirm = { target ->
+                    Messages.showYesNoDialog(
+                        project,
+                        buildString {
+                            appendLine("Switch the default SDF account to production?")
+                            appendLine()
+                            appendLine("Authentication ID: ${target.authenticationId}")
+                            appendLine("Account: ${target.accountName} (${target.accountId})")
+                            append("Role: ${target.role}")
+                        },
+                        "Confirm Production Account",
+                        "Switch to Production",
+                        "Cancel",
+                        Messages.getWarningIcon()
+                    ) == Messages.YES
+                },
+                reopen = { showAccountPicker(it) },
+                showDetachedError = { showPopupMessage(it) }
+            ))
+        } finally {
+            if (!popup.isDisposed) panel.setAccountActivationInProgress(false)
+        }
     }
 
     private fun openProjectJson() {
@@ -345,6 +376,13 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
         if (newTimestamp != lastModifiedMillis) refreshAsync()
     }
 
+    private fun renderStatus(state: AccountWorkflowState) {
+        if (isDisposed || project.isDisposed) return
+        applyState(SdfAccountStatusPresentation.present(
+            state.project, state.currentAuthentication, preferences.displayStyle
+        ))
+    }
+
     private fun applyState(state: AccountWidgetState) {
         val toneColor = when (state.tone) {
             WidgetTone.OK -> JBColor(Color(0x2E7D32), Color(0x81C784))
@@ -355,7 +393,7 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
         val updateLabel = Runnable {
             label.text = state.text
             label.toolTipText = state.tooltip
-            label.accessibleContext.accessibleDescription = state.tooltip
+            label.accessibleContext.accessibleDescription = state.accessibleDescription
             label.foreground = toneColor
             label.icon = if (state.showCriticalIcon) criticalIcon else null
             label.iconTextGap = 4
