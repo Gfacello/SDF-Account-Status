@@ -24,7 +24,8 @@ class NodeSuiteCloudProcessExecutorTest {
             listOf(java.toString(), source.toString(), "echo", "literal $() and spaces"), root, 15_000, noCancellation
         )
         assertEquals(0, result.exitCode)
-        assertEquals("literal $() and spaces\n${root.toRealPath()}\n", result.stdout)
+        val newline = System.lineSeparator()
+        assertEquals("literal $() and spaces$newline${root.toRealPath()}$newline", result.stdout)
         assertEquals("", result.stderr)
     }
 
