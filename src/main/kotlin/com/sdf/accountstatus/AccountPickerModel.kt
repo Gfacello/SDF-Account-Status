@@ -139,21 +139,32 @@ internal data class AccountPickerModel(
             section.groups.flatMap(AccountPickerGroup::accounts)
         }
 
+    /** Read from the complete model so other active constraints never hide a role choice. */
+    val availableRoles: List<String>
+        get() = accounts.map(AccountPickerAccount::role)
+            .filter(String::isNotBlank)
+            .distinct()
+            .sortedWith(compareBy<String> { it.lowercase(Locale.ROOT) }.thenBy { it })
+
     /**
      * Returns the same hierarchy with only matching account leaves retained.
      * Every query token must occur in one of the account's searchable fields.
      */
-    fun filtered(query: String): AccountPickerModel {
-        val tokens = SEARCH_TOKEN_SEPARATOR.split(query.lowercase(Locale.ROOT))
+    fun filtered(query: String): AccountPickerModel = filtered(AccountPickerFilterState(query = query))
+
+    fun filtered(filters: AccountPickerFilterState): AccountPickerModel {
+        val tokens = SEARCH_TOKEN_SEPARATOR.split(filters.query.lowercase(Locale.ROOT))
             .filter(String::isNotBlank)
-        if (tokens.isEmpty()) return this
+        if (tokens.isEmpty() && filters.environment == null && filters.role == null) return this
 
         return copy(
             sections = sections.map { section ->
                 section.copy(
                     groups = section.groups.mapNotNull { group ->
                         val matches = group.accounts.filter { account ->
-                            tokens.all(account.normalizedSearchText::contains)
+                            tokens.all(account.normalizedSearchText::contains) &&
+                                (filters.environment == null || account.environment == filters.environment) &&
+                                (filters.role == null || account.role == filters.role)
                         }
                         group.takeIf { matches.isNotEmpty() }?.copy(accounts = matches)
                     }
@@ -165,6 +176,16 @@ internal data class AccountPickerModel(
     private companion object {
         val SEARCH_TOKEN_SEPARATOR = Regex("[^\\p{L}\\p{N}]+")
     }
+}
+
+/** A complete, restorable picker selection. Null environment/role mean no constraint. */
+internal data class AccountPickerFilterState(
+    val query: String = "",
+    val environment: AccountEnvironment? = null,
+    val role: String? = null
+) {
+    val isActive: Boolean
+        get() = query.isNotBlank() || environment != null || role != null
 }
 
 internal data class AccountPickerSectionModel(

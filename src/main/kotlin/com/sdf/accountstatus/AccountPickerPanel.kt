@@ -1,5 +1,6 @@
 package com.sdf.accountstatus
 
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.ui.ColoredTreeCellRenderer
 import com.intellij.ui.SearchTextField
@@ -16,10 +17,15 @@ import com.sdf.accountstatus.domain.AccountEnvironment
 import java.awt.BorderLayout
 import java.awt.FlowLayout
 import java.awt.Point
+import java.awt.GridBagConstraints
+import java.awt.GridBagLayout
 import java.awt.event.KeyAdapter
 import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import javax.swing.DefaultComboBoxModel
+import javax.swing.JComboBox
+import javax.swing.JButton
 import javax.swing.JPanel
 import javax.swing.JComponent
 import javax.swing.ListSelectionModel
@@ -32,8 +38,9 @@ import javax.swing.tree.TreePath
  */
 internal class AccountPickerPanel(
     private val onAccountChosen: (AccountPickerAccount) -> Unit,
-    private val onRetry: () -> Unit,
+    onRetry: () -> Unit,
     private val onOpenProjectJson: () -> Unit,
+    private val onRefresh: () -> Unit = onRetry,
     private val onAccountContext: ((AccountPickerAccount, JComponent, Point) -> Unit)? = null
 ) : JPanel(BorderLayout()) {
     val searchField = SearchTextField(false)
@@ -43,10 +50,22 @@ internal class AccountPickerPanel(
     private val treeTable = TreeTable(treeModel)
     private val warningLabel = JBLabel()
     private val stateLabel = JBLabel()
-    private val retryLink = ActionLink("Retry") { onRetry() }
+    private val retryLink = ActionLink("Retry") { refreshAccounts() }
+    private val refreshButton = JButton("Refresh", AllIcons.Actions.Refresh)
+    private val clearFiltersLink = ActionLink("Clear filters") {
+        clearFilters()
+        focusSearch()
+    }
     private val openProjectJsonLink = ActionLink("Open project.json") { onOpenProjectJson() }
+    private val environmentSelector = JComboBox(EnvironmentFilterOption.entries.toTypedArray())
+    private val roleSelector = JComboBox(arrayOf(RoleFilterOption(null)))
 
     private var fullModel: AccountPickerModel? = null
+    private var filters = AccountPickerFilterState()
+    private var updatingFilterControls = false
+    private var filterNotice: String? = null
+    private var loading = true
+    private var accountActivationInProgress = false
 
     init {
         preferredSize = JBUI.size(720, 360)
@@ -57,9 +76,11 @@ internal class AccountPickerPanel(
             "Search authentication IDs, customers, accounts, roles, or environments"
         searchField.textEditor.accessibleContext.accessibleName = "Search SuiteCloud accounts"
         searchField.addDocumentListener(object : javax.swing.event.DocumentListener {
-            override fun insertUpdate(event: javax.swing.event.DocumentEvent) = applyFilter()
-            override fun removeUpdate(event: javax.swing.event.DocumentEvent) = applyFilter()
-            override fun changedUpdate(event: javax.swing.event.DocumentEvent) = applyFilter()
+            override fun insertUpdate(event: javax.swing.event.DocumentEvent) = searchChanged()
+            override fun removeUpdate(event: javax.swing.event.DocumentEvent) = searchChanged()
+            override fun changedUpdate(event: javax.swing.event.DocumentEvent) = searchChanged()
+
+            private fun searchChanged() = updateFiltersFromControls(filters.copy(query = searchField.text))
         })
         searchField.textEditor.addKeyListener(object : KeyAdapter() {
             override fun keyPressed(event: KeyEvent) {
@@ -82,10 +103,37 @@ internal class AccountPickerPanel(
         warningLabel.border = JBUI.Borders.emptyTop(6)
         warningLabel.accessibleContext.accessibleName = "Account picker warning"
 
+        environmentSelector.accessibleContext.accessibleName = "Filter accounts by environment"
+        environmentSelector.toolTipText = "Filter using verified account environment metadata"
+        environmentSelector.addActionListener {
+            val selected = environmentSelector.selectedItem as? EnvironmentFilterOption
+            updateFiltersFromControls(filters.copy(environment = selected?.environment))
+        }
+        roleSelector.accessibleContext.accessibleName = "Filter accounts by role"
+        roleSelector.toolTipText = "Filter by roles from the complete account list"
+        roleSelector.maximumRowCount = 12
+        roleSelector.prototypeDisplayValue = RoleFilterOption("Administrator")
+        roleSelector.addActionListener {
+            val selected = roleSelector.selectedItem as? RoleFilterOption
+            updateFiltersFromControls(filters.copy(role = selected?.role))
+        }
+
+        refreshButton.toolTipText = "Refresh SuiteCloud accounts"
+        refreshButton.accessibleContext.accessibleName = "Refresh SuiteCloud accounts"
+        refreshButton.mnemonic = KeyEvent.VK_R
+        refreshButton.addActionListener { refreshAccounts() }
+
+        val searchRow = JPanel(BorderLayout(JBUI.scale(6), 0)).apply {
+            isOpaque = false
+            add(searchField, BorderLayout.CENTER)
+            add(refreshButton, BorderLayout.EAST)
+        }
+
         val header = JPanel(BorderLayout()).apply {
             isOpaque = false
             border = JBUI.Borders.emptyBottom(6)
-            add(searchField, BorderLayout.NORTH)
+            add(searchRow, BorderLayout.NORTH)
+            add(createFilterControls(), BorderLayout.CENTER)
             add(warningLabel, BorderLayout.SOUTH)
         }
 
@@ -93,9 +141,12 @@ internal class AccountPickerPanel(
 
         stateLabel.foreground = com.intellij.ui.JBColor.GRAY
         stateLabel.accessibleContext.accessibleName = "Account picker status"
-        retryLink.mnemonic = KeyEvent.VK_R
+        retryLink.mnemonic = KeyEvent.VK_T
         retryLink.accessibleContext.accessibleName = "Retry reading SuiteCloud accounts"
         retryLink.isVisible = false
+        clearFiltersLink.mnemonic = KeyEvent.VK_C
+        clearFiltersLink.accessibleContext.accessibleName = "Clear account search and filters"
+        clearFiltersLink.isVisible = false
         openProjectJsonLink.mnemonic = KeyEvent.VK_O
         openProjectJsonLink.accessibleContext.accessibleName = "Open project.json"
 
@@ -103,6 +154,7 @@ internal class AccountPickerPanel(
             isOpaque = false
             add(stateLabel)
             add(retryLink)
+            add(clearFiltersLink)
         }
         val footer = JPanel(BorderLayout()).apply {
             isOpaque = false
@@ -118,11 +170,15 @@ internal class AccountPickerPanel(
     }
 
     fun showLoading() {
+        loading = true
         fullModel = null
-        searchField.isEnabled = false
+        updateActionAvailability()
         warningLabel.isVisible = false
         retryLink.isVisible = false
+        clearFiltersLink.isVisible = false
         stateLabel.text = "Reading SuiteCloud accounts…"
+        stateLabel.toolTipText = null
+        stateLabel.accessibleContext.accessibleDescription = stateLabel.text
         val currentRoot = treeModel.root as? DefaultMutableTreeNode
         if (currentRoot == null || currentRoot.childCount > 0) {
             replaceRoot(DefaultMutableTreeNode(PickerTreeValue.Root))
@@ -134,30 +190,25 @@ internal class AccountPickerPanel(
     }
 
     fun showAccounts(model: AccountPickerModel) {
+        loading = false
         fullModel = model
-        searchField.isEnabled = true
+        updateActionAvailability()
         retryLink.isVisible = false
         setBusy(false)
-        warningLabel.text = if (model.currentAuthenticationMissing) {
-            "The default authentication ID in project.json is not present in the SuiteCloud account list."
-        } else {
-            ""
-        }
-        warningLabel.isVisible = model.currentAuthenticationMissing
-        stateLabel.text =
-            "${model.accounts.size} configured account${if (model.accounts.size == 1) "" else "s"}" +
-                "  ·  Enter or double-click to switch"
-        treeTable.emptyText.text = "No accounts match this search."
-        applyFilter()
+        restoreFilterState(filters)
     }
 
     fun showUnavailable(message: String, canRetry: Boolean = true) {
+        loading = false
         fullModel = null
-        searchField.isEnabled = false
+        updateActionAvailability()
         warningLabel.isVisible = false
+        clearFiltersLink.isVisible = false
         setBusy(false)
         retryLink.isVisible = canRetry
         stateLabel.text = message
+        stateLabel.toolTipText = null
+        stateLabel.accessibleContext.accessibleDescription = message
         replaceRoot(DefaultMutableTreeNode(PickerTreeValue.Root))
         treeTable.emptyText.text = message
     }
@@ -167,16 +218,114 @@ internal class AccountPickerPanel(
         stateLabel.accessibleContext.accessibleDescription = message
     }
 
+    /** The controller holds this state through confirmation and persistence, including async work. */
+    fun setAccountActivationInProgress(inProgress: Boolean) {
+        accountActivationInProgress = inProgress
+        updateActionAvailability()
+    }
+
+    private fun refreshAccounts() {
+        if (loading || accountActivationInProgress) return
+        // Disable repeat clicks before calling the controller, even if its loader starts later.
+        showLoading()
+        onRefresh()
+    }
+
+    private fun updateActionAvailability() {
+        val canRefresh = !loading && !accountActivationInProgress
+        refreshButton.isEnabled = canRefresh
+        retryLink.isEnabled = canRefresh
+        val canChoose = canRefresh && fullModel != null
+        setFilterControlsEnabled(canChoose)
+        treeTable.isEnabled = canChoose
+        clearFiltersLink.isEnabled = canChoose
+    }
+
     fun focusSearch() {
         searchField.requestFocusInWindow()
         searchField.selectText()
     }
 
-    fun searchQuery(): String = searchField.text
+    fun filterState(): AccountPickerFilterState = filters
+
+    /** Restore all picker constraints together, including when results have not loaded yet. */
+    fun restoreFilterState(state: AccountPickerFilterState) {
+        val roles = fullModel?.availableRoles
+        val roleRemoved = state.role != null && roles != null && state.role !in roles
+        filters = if (roleRemoved) state.copy(role = null) else state
+        filterNotice = if (roleRemoved) {
+            "Selected role is no longer available. Showing all roles."
+        } else {
+            null
+        }
+        updatingFilterControls = true
+        try {
+            searchField.text = filters.query
+            searchField.textEditor.caretPosition = filters.query.length
+            environmentSelector.selectedItem = EnvironmentFilterOption.entries.first {
+                it.environment == filters.environment
+            }
+            roleSelector.model = DefaultComboBoxModel(
+                (listOf(RoleFilterOption(null)) +
+                    (roles ?: listOfNotNull(filters.role)).map(::RoleFilterOption)).toTypedArray()
+            )
+            roleSelector.selectedItem = RoleFilterOption(filters.role)
+        } finally {
+            updatingFilterControls = false
+        }
+        applyFilter()
+    }
+
+    fun clearFilters() = restoreFilterState(AccountPickerFilterState())
+
+    fun searchQuery(): String = filters.query
 
     fun restoreSearchQuery(query: String) {
-        searchField.text = query
-        searchField.textEditor.caretPosition = query.length
+        restoreFilterState(filters.copy(query = query))
+    }
+
+    private fun setFilterControlsEnabled(enabled: Boolean) {
+        searchField.isEnabled = enabled
+        environmentSelector.isEnabled = enabled
+        roleSelector.isEnabled = enabled
+    }
+
+    private fun updateFiltersFromControls(state: AccountPickerFilterState) {
+        if (updatingFilterControls) return
+        filters = state
+        filterNotice = null
+        applyFilter()
+    }
+
+    private fun createFilterControls(): JPanel = JPanel(GridBagLayout()).apply {
+        isOpaque = false
+        border = JBUI.Borders.emptyTop(6)
+        val environmentLabel = JBLabel("Environment:").apply {
+            labelFor = environmentSelector
+            displayedMnemonic = KeyEvent.VK_E
+        }
+        val roleLabel = JBLabel("Role:").apply {
+            labelFor = roleSelector
+            displayedMnemonic = KeyEvent.VK_L
+        }
+        add(environmentLabel, GridBagConstraints().apply {
+            gridx = 0
+            insets = JBUI.insetsRight(4)
+        })
+        add(environmentSelector, GridBagConstraints().apply {
+            gridx = 1
+            weightx = 0.5
+            fill = GridBagConstraints.HORIZONTAL
+        })
+        add(roleLabel, GridBagConstraints().apply {
+            gridx = 2
+            insets = JBUI.insets(0, 8, 0, 4)
+        })
+        add(roleSelector, GridBagConstraints().apply {
+            gridx = 3
+            weightx = 0.5
+            fill = GridBagConstraints.HORIZONTAL
+        })
     }
 
     private fun setBusy(busy: Boolean) {
@@ -253,11 +402,31 @@ internal class AccountPickerPanel(
 
     private fun applyFilter() {
         val model = fullModel ?: return
-        val query = searchField.text.trim()
-        val filtered = model.filtered(query)
+        val filtered = model.filtered(filters)
+        val matchingCount = filtered.accounts.size
+        val totalCount = model.accounts.size
+        stateLabel.text = "$matchingCount of $totalCount account${if (totalCount == 1) "" else "s"}"
+        stateLabel.toolTipText = "Enter or double-click an account to switch"
+        stateLabel.accessibleContext.accessibleDescription =
+            "${stateLabel.text} match the search and filters. ${stateLabel.toolTipText}."
+        clearFiltersLink.isVisible = filters.isActive
+        treeTable.emptyText.text = if (totalCount == 0) {
+            "No SuiteCloud accounts are configured."
+        } else {
+            "No accounts match the search and filters."
+        }
+        val warnings = listOfNotNull(
+            if (model.currentAuthenticationMissing) {
+                "The default authentication ID in project.json is not present in the SuiteCloud account list."
+            } else null,
+            filterNotice
+        )
+        warningLabel.text = warnings.joinToString(" ")
+        warningLabel.accessibleContext.accessibleDescription = warningLabel.text
+        warningLabel.isVisible = warnings.isNotEmpty()
         val root = buildTree(filtered)
         replaceRoot(root)
-        if (query.isNotEmpty()) {
+        if (filters.isActive) {
             expandAll()
         } else {
             applyInitialExpansion(filtered)
@@ -356,6 +525,7 @@ internal class AccountPickerPanel(
     }
 
     private fun activateSelectedRow(toggleGroups: Boolean = true) {
+        if (fullModel == null || !treeTable.isEnabled) return
         val row = treeTable.selectedRow
         if (row < 0) return
         val path = treeTable.tree.getPathForRow(row) ?: return
@@ -393,6 +563,23 @@ internal class AccountPickerPanel(
         data class Section(val model: AccountPickerSectionModel) : PickerTreeValue
         data class Group(val model: AccountPickerGroup) : PickerTreeValue
         data class Account(val model: AccountPickerAccount) : PickerTreeValue
+    }
+
+    private enum class EnvironmentFilterOption(
+        val environment: AccountEnvironment?,
+        private val label: String
+    ) {
+        ALL(null, "All environments"),
+        SANDBOX(AccountEnvironment.SANDBOX, "Sandbox"),
+        PRODUCTION(AccountEnvironment.PRODUCTION, "Production"),
+        RELEASE_PREVIEW(AccountEnvironment.RELEASE_PREVIEW, "Release Preview"),
+        UNVERIFIED(AccountEnvironment.UNKNOWN, "Unverified");
+
+        override fun toString(): String = label
+    }
+
+    private data class RoleFilterOption(val role: String?) {
+        override fun toString(): String = role ?: "All roles"
     }
 
     private class AccountTreeRenderer : ColoredTreeCellRenderer() {
