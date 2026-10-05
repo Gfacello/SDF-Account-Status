@@ -1,11 +1,13 @@
 # 0.3.0 candidate validation
 
-Updated 2026-10-05. Release-preparation source: `chore/release-0.3.0` at `c280bddb8d9ee4b44aa06f76a550d5813397e35d`, in the durable `.worktrees/candidate` checkout. The inspected artifact is version `0.3.0`, an unpublished candidate awaiting manual/live validation, exact release-revision CI and review. Changelog/Marketplace notes describe the candidate; the changelog deliberately remains **Unreleased candidate**, with preparation date 2026-10-05 rather than a publication date. Scope and completion criteria remain in [PLAN-0.3.0.md](PLAN-0.3.0.md) and [GOAL-0.3.0.md](GOAL-0.3.0.md).
+Updated 2026-10-05. Release-preparation source: `chore/release-0.3.0` at `c280bddb8d9ee4b44aa06f76a550d5813397e35d`, in the durable `.worktrees/candidate` checkout. Subsequent release head `bdc9c00c7c97783ddc9fef9b5f3f48fe0cff386d` changes documentation only; draft [PR #11](https://github.com/Gfacello/SDF-Account-Status/pull/11) targets `feature/0.3.0-candidate`. The local source gate and checksum below remain associated with `c280bdd`, not a new run of the documentation commit. The inspected artifact is version `0.3.0`, an unpublished candidate awaiting full manual/live validation and review. PR #11 CI passed for head `bdc9c00`; any subsequent documentation commit still needs its own final CI observation. Changelog/Marketplace notes describe the candidate; the changelog deliberately remains **Unreleased candidate**, with preparation date 2026-10-05 rather than a publication date. Scope and completion criteria remain in [PLAN-0.3.0.md](PLAN-0.3.0.md) and [GOAL-0.3.0.md](GOAL-0.3.0.md).
 
 ## Automated evidence
 
 | Revision/date | Evidence | Result and scope |
 | --- | --- | --- |
+| PR #11 head `bdc9c00`, 2026-10-05 | [GitHub Actions run 37355038442](https://github.com/Gfacello/SDF-Account-Status/actions/runs/37355038442) | Success for all three jobs: Ubuntu full gate (3m 52s), macOS and Windows synthetic CLI tests; total run 5m 0s. Workflow artifact merge revision: `b40d0f80a4a62c672ab9dab2ad8107a80e846e1f` |
+| PR #10 head `6787477`, 2026-10-05 | [GitHub Actions run 37353758331](https://github.com/Gfacello/SDF-Account-Status/actions/runs/37353758331) | Success for all three jobs: Ubuntu full gate (4m 55s), macOS and Windows synthetic CLI tests; total run 6m 11s. Workflow artifact/checkout merge revision: `65537f21db98553b9cb2c7ad88d1f44801effdea` |
 | `c280bdd`, 2026-10-05 | Complete local gate below on macOS, JDK 21 | Passed: 215 tests in 29 suites; zero failures, errors or skips; all 20 Gradle tasks executed in 33 seconds |
 | `c280bdd`, 2026-10-05 | Plugin Verifier | Compatible with WebStorm `261.22158.274` (2026.1) and `262.8665.259` (2026.2) |
 | `c280bdd`, 2026-10-05 | Versioned ZIP inspection | ID `com.sdf.accountstatus`, version `0.3.0`, since-build `261`, no upper build bound; expected single library JAR, LICENSE, both plugin icons and `JetBrainsMarketplaceErrorReportSubmitter` present |
@@ -16,9 +18,9 @@ Updated 2026-10-05. Release-preparation source: `chore/release-0.3.0` at `c280bd
 | `0c8bc5c`, 2026-10-05 | [PR #8 GitHub Actions run 37350903593](https://github.com/Gfacello/SDF-Account-Status/actions/runs/37350903593) | Success for all three jobs: Ubuntu full verification, macOS focused synthetic CLI tests, Windows focused synthetic CLI tests |
 | `0c8bc5c`, 2026-10-05 | Local focused `NodeSuiteCloud*Test` run | Passed 28 tests across four suites on macOS/JDK 21; zero failures/errors/skips |
 
-The remote OS run validates synthetic provider/process fixtures on `0c8bc5c`, not the integrated candidate's UI or a real Oracle CLI/account. Only the Unix npm symlink fixture is disabled on Windows; Windows npm-wrapper discovery and subprocess checks remain enabled. Existing GitHub Actions v4 deprecation warnings were nonfatal. These suites overlap; counts are not additive.
+PR #10's successful run belongs to head `6787477d566d395b6564c36a85db206a90f37aa7`, but the pull-request workflow artifact/checkout uses GitHub's merge revision `65537f21db98553b9cb2c7ad88d1f44801effdea`. Do not label that artifact as a build of the PR head alone or as release PR #11 evidence. [PR #11 run 37355038442](https://github.com/Gfacello/SDF-Account-Status/actions/runs/37355038442) passed all three jobs for head `bdc9c00`; its artifact uses merge revision `b40d0f80a4a62c672ab9dab2ad8107a80e846e1f`. That result does not automatically cover a subsequent documentation commit; observe the final PR revision's checks after any later push. The earlier PR #8 remote run validates its own provider/fixture branch; these runs use synthetic CLI processes, not real Oracle accounts or manual IDE interaction. Only the Unix npm symlink fixture is disabled on Windows; Windows npm-wrapper discovery and subprocess checks remain enabled. Existing GitHub Actions v4 deprecation warnings were nonfatal. These suites overlap; counts are not additive.
 
-The current source gate ran:
+The `c280bdd` release-preparation source gate ran:
 
 ```bash
 JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home \
@@ -57,9 +59,15 @@ Generated results and temporary logs are not committed and may be replaced by la
 
 The integrated suite covers workflow/gateway persistence, real IntelliJ document and EDT behavior, snapshot/load races, filters/refresh and production-cancel restoration, browser targeting/URL validation, rich presentation/local preferences, provider selection and settings, setup-controller effects, and bounded synthetic subprocess execution. Automated component coverage does not prove the complete manual scenarios below.
 
-## Manual IDE matrix — not yet verified
+## Manual IDE matrix — incomplete
 
-An isolated synthetic WebStorm 2026.1 process was launched on 2026-10-05, but the UI automation tool could not attach to its development Java application. The process was stopped; no completed manual observation is claimed. The standard `runIde` task also encountered an unavailable optional Compose hot-reload agent (`1.1.0-alpha03`); the attempted smoke session disabled that unused agent through a local init script. These are development-environment limitations, not passing UI checks. A native signed-app launch alternative is being investigated; no new manual pass has been established.
+### Partial manual observations
+
+On 2026-10-05, the native signed WebStorm 2026.1 launcher displayed the synthetic project with a green `example-sandbox-dev` status label. Accessibility output and a screenshot showed account metadata for **Example Company**, account ID `123456_SB1`, environment **Sandbox (SB1)** and role **Developer**. The local, uncommitted native log is `/Users/gonzalofacello/Documents/Projects/SDF-Account-Status/.worktrees/manual-fixture/native261/log/idea.log`. It records plugin version `0.3.0` loaded (line 189), WebStorm `WS-261.22158.274` (line 329) and JBR `25.0.2` (line 330). No plugin stack frames were found in the inspected log. This establishes partial plugin-load/status-rendering evidence only; missing/invalid-project recovery and the rest of the first matrix row were not observed.
+
+Picker interaction was not demonstrated: the accessibility click had no visible result, coordinate interaction failed with `noWindowsAvailable`, and the bundled application identifier was ambiguous to automation. The log also recorded **License required** after account-connection timeouts, so licensing readiness is not established. A JetBrains Station Unix-domain socket error was associated with the temporary harness path length; shortening that path is planned before a later relaunch. These observations do not establish a plugin error, a working picker or completed manual acceptance.
+
+The earlier Gradle-launched synthetic process could not be attached through UI automation and was stopped. Standard `runIde` had also encountered an unavailable optional Compose hot-reload agent (`1.1.0-alpha03`); that unused agent was disabled only in a local init script for the attempted smoke session. This earlier harness failure remains historical, separate from the native launch observation.
 
 Each box below remains open until observed in that IDE version. Record source/ZIP checksum, IDE build, OS, Oracle plugin version when relevant, and concise results. Use synthetic data or the dedicated test setup; exclude credentials and customer identifiers from evidence.
 
@@ -109,13 +117,15 @@ Focused draft PRs are available and attached to the task:
 | [#8](https://github.com/Gfacello/SDF-Account-Status/pull/8) | Node provider and synthetic OS CI |
 | [#9](https://github.com/Gfacello/SDF-Account-Status/pull/9) | Error-reporting documentation |
 | [#10](https://github.com/Gfacello/SDF-Account-Status/pull/10) | Integrated candidate targeting `main` |
+| [#11](https://github.com/Gfacello/SDF-Account-Status/pull/11) | Release preparation targeting `feature/0.3.0-candidate` |
 
-All are drafts; creation is not approval or merging. Integrated Add Account/provider configuration and review fixes are on the candidate branch. The dependent release-preparation PR is being prepared; its confirmed URL is still pending. Earlier committed implementation branches were pushed; the candidate worktree is durable after the temporary checkouts disappeared.
+All are drafts; creation is not approval or merging. Integrated Add Account/provider configuration and review fixes are on the candidate branch. Dependent draft release-preparation [PR #11](https://github.com/Gfacello/SDF-Account-Status/pull/11) has been created and attached; CI for `bdc9c00` has passed, while later-revision CI observation and review completion remain pending. Earlier committed implementation branches were pushed; the candidate worktree is durable after the temporary checkouts disappeared.
 
 - [x] Create `chore/release-0.3.0`, set version `0.3.0`, and prepare candidate changelog/Marketplace notes at `c280bdd`.
 - [x] Pass the complete local gate for `c280bdd`, inspect its versioned ZIP and record its checksum.
 - [x] Prepare the [post-merge release checklist](RELEASE-0.3.0.md), including final-main CI, clean checkout, signing, checksum, immutable tag and publication actions.
-- [ ] Record passing remote CI for the exact release-preparation revision.
+- [x] Record passing release PR #11 CI for head `bdc9c00` and its workflow merge revision `b40d0f80a4a62c672ab9dab2ad8107a80e846e1f`.
+- [ ] Observe final CI after the next documentation push; do not carry a previous run's success onto an unobserved revision.
 - [ ] Complete manual/live evidence and resolve review findings; only then finalize publication-date notes and verified provider/setup inclusion.
-- [ ] Create and record the release-preparation PR URL, then complete the review handoff.
+- [x] Create and attach draft [release-preparation PR #11](https://github.com/Gfacello/SDF-Account-Status/pull/11), targeting the candidate branch. Its creation does not complete the remaining review/live/manual gates.
 - [ ] Hand off the reviewable candidate. Do not merge the release-preparation PR, push a release tag or publish Marketplace/GitHub releases without subsequent authorization.
