@@ -1,6 +1,6 @@
 # Goal: prepare NetSuite SDF Account Status 0.3.0 for release
 
-Status: active. On 2026-10-05 the committed branches were recovered into the durable `.worktrees/candidate` checkout and integrated on `feature/0.3.0-candidate`. The source revision `8543334` passed the complete local automated gate; manual/live validation is still pending. Version metadata is still `0.2.0`; the release-preparation branch and final review handoff remain outstanding. Nothing in this checklist authorizes publication, a release tag, or merging the release-preparation PR.
+Status: active. On 2026-10-05 the committed branches were recovered into the durable `.worktrees/candidate` checkout and integrated on `feature/0.3.0-candidate`. The release-preparation branch `chore/release-0.3.0` now sets version `0.3.0`; source `c280bdd` passed the complete local automated gate and versioned ZIP inspection. Manual/live validation, exact release-revision remote CI and the final review handoff remain outstanding. Candidate notes retain an Unreleased heading; no publication date is finalized. Nothing in this checklist authorizes publication, a release tag, or merging the release-preparation PR.
 
 ## Objective and completion
 
@@ -102,9 +102,9 @@ Review: [PR #5 refresh/filters](https://github.com/Gfacello/SDF-Account-Status/p
 - [x] Integrate the preserved branches in the durable candidate checkout; resolve merge conflicts and reviewed filter/context-click/save/configuration issues.
 - [x] Pass an initial combined gate on `83c2695`: 213 tests in 29 suites, zero failures/errors/skips, packaging and configuration/structure checks, and Compatible results for WebStorm `261.22158.274` and `262.8665.259`.
 - [x] Inspect that initial ZIP: correct `com.sdf.accountstatus` ID, packaged license and error handler, since-build `261`; artifact version remained `0.2.0`.
-- [x] Pass the full gate on current source `8543334` after the provider filesystem-validation threading fix: 215 tests in 29 suites, zero failures/errors/skips, all 20 tasks executed, both WebStorm verifier verdicts Compatible.
+- [x] Pass the full gate on integrated source `8543334` after the provider filesystem-validation threading fix: 215 tests in 29 suites, zero failures/errors/skips, all 20 tasks executed, both WebStorm verifier verdicts Compatible.
 - [x] Inspect the fresh `8543334` ZIP: correct ID, version `0.2.0`, since-build `261` with no upper bound, expected library JAR, packaged LICENSE and Marketplace exception handler; checksum recorded in [VALIDATION-0.3.0.md](VALIDATION-0.3.0.md).
-- [ ] Inspect the eventual `0.3.0` release-preparation artifact after version/notes changes.
+- [x] Inspect the `0.3.0` release-preparation ZIP from `c280bdd`: expected single library JAR, correct ID/version/build bounds, LICENSE, both icons and error handler; checksum recorded in the validation document.
 - [ ] Complete the supported-IDE manual matrix in [VALIDATION-0.3.0.md](VALIDATION-0.3.0.md), including actual widget lifecycle/multiple projects and provider changes during a load.
 - [ ] Record live provider/setup observations, sanitized configuration and any remaining limitations.
 - [ ] Complete required PR reviews before integration into `main`; draft PR creation alone does not satisfy review requirements.
@@ -113,12 +113,15 @@ Required gate: `./gradlew clean test buildPlugin verifyPluginProjectConfiguratio
 
 ### 8. Prepare the release review
 
-Branch: `chore/release-0.3.0` (not yet prepared).
+Branch: `chore/release-0.3.0`, prepared at source `c280bdd`; its draft PR is being prepared, with URL still pending. The integrated candidate review is [PR #10](https://github.com/Gfacello/SDF-Account-Status/pull/10), targeting `main`.
 
-- [ ] Set version `0.3.0`, finalize dated changelog/Marketplace notes, and describe only delivered/verified behavior.
+- [x] Set version `0.3.0` and prepare candidate changelog/Marketplace notes with preparation date 2026-10-05.
+- [ ] Finalize publication-date notes and provider/setup inclusion only after manual/live gates and review; the changelog currently remains **Unreleased candidate**.
 - [x] Align candidate provider prerequisites, local configuration, setup instructions and privacy documentation with the implementation; live compatibility limits remain explicit.
-- [ ] Run required final gates on the release-preparation revision and create its reviewable PR with evidence.
-- [ ] Prepare the post-merge checklist: final-main CI, clean checkout, signed ZIP, checksum, exact tag target and publication steps still required.
+- [x] Pass the complete local gate on release-preparation source `c280bdd`: 215 tests in 29 suites, zero failures/errors/skips, all 20 tasks executed in 33 seconds, both configured WebStorm verifier verdicts Compatible.
+- [ ] Record passing remote CI for the exact release-preparation revision.
+- [ ] Create and record its reviewable draft PR with the revision-specific evidence and unresolved gates.
+- [x] Prepare [RELEASE-0.3.0.md](RELEASE-0.3.0.md) with the post-merge checklist: final-main CI, clean checkout, signed ZIP, checksum, exact tag target and publication steps still requiring authorization.
 - [ ] Present the candidate and remaining release actions for review without merging the release-preparation PR, pushing a release tag or publishing.
 
 ## Progress tracking

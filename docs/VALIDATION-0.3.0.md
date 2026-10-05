@@ -1,15 +1,18 @@
 # 0.3.0 candidate validation
 
-Updated 2026-10-05. Source candidate: `feature/0.3.0-candidate` at `85433342e3613ffc710b607d81e482ab626c3939`, in the durable `.worktrees/candidate` checkout. The packaged version is still `0.2.0`; this is an unpublished development artifact, not the final 0.3.0 release ZIP. Scope and completion criteria remain in [PLAN-0.3.0.md](PLAN-0.3.0.md) and [GOAL-0.3.0.md](GOAL-0.3.0.md).
+Updated 2026-10-05. Release-preparation source: `chore/release-0.3.0` at `c280bddb8d9ee4b44aa06f76a550d5813397e35d`, in the durable `.worktrees/candidate` checkout. The inspected artifact is version `0.3.0`, an unpublished candidate awaiting manual/live validation, exact release-revision CI and review. Changelog/Marketplace notes describe the candidate; the changelog deliberately remains **Unreleased candidate**, with preparation date 2026-10-05 rather than a publication date. Scope and completion criteria remain in [PLAN-0.3.0.md](PLAN-0.3.0.md) and [GOAL-0.3.0.md](GOAL-0.3.0.md).
 
 ## Automated evidence
 
 | Revision/date | Evidence | Result and scope |
 | --- | --- | --- |
-| `8543334`, 2026-10-05 | Complete local gate below on macOS, JDK 21 | Passed: 215 tests in 29 suites; zero failures, errors or skips; all 20 Gradle tasks executed in 45 seconds |
+| `c280bdd`, 2026-10-05 | Complete local gate below on macOS, JDK 21 | Passed: 215 tests in 29 suites; zero failures, errors or skips; all 20 Gradle tasks executed in 33 seconds |
+| `c280bdd`, 2026-10-05 | Plugin Verifier | Compatible with WebStorm `261.22158.274` (2026.1) and `262.8665.259` (2026.2) |
+| `c280bdd`, 2026-10-05 | Versioned ZIP inspection | ID `com.sdf.accountstatus`, version `0.3.0`, since-build `261`, no upper build bound; expected single library JAR, LICENSE, both plugin icons and `JetBrainsMarketplaceErrorReportSubmitter` present |
+| `8543334`, 2026-10-05 | Earlier integrated source gate on macOS, JDK 21 | Passed: 215 tests in 29 suites; zero failures, errors or skips; all 20 Gradle tasks executed in 45 seconds |
 | `8543334`, 2026-10-05 | Plugin Verifier | Compatible with WebStorm `261.22158.274` (2026.1) and `262.8665.259` (2026.2) |
-| `8543334`, 2026-10-05 | Fresh ZIP inspection | ID `com.sdf.accountstatus`, version `0.2.0`, since-build `261`, no upper build bound; expected library JAR, LICENSE and `JetBrainsMarketplaceErrorReportSubmitter` present |
-| `83c2695`, 2026-10-05 | Prior combined gate before final provider threading fix | Passed 213 tests in 29 suites, packaging/configuration/structure and both WebStorm verifiers; superseded by the current-revision gate above |
+| `8543334`, 2026-10-05 | Historical pre-version-bump ZIP inspection | ID `com.sdf.accountstatus`, version `0.2.0`, since-build `261`, no upper build bound; expected library JAR, LICENSE and `JetBrainsMarketplaceErrorReportSubmitter` present |
+| `83c2695`, 2026-10-05 | Prior combined gate before final provider threading fix | Passed 213 tests in 29 suites, packaging/configuration/structure and both WebStorm verifiers; superseded by the later revision-specific gates above |
 | `0c8bc5c`, 2026-10-05 | [PR #8 GitHub Actions run 37350903593](https://github.com/Gfacello/SDF-Account-Status/actions/runs/37350903593) | Success for all three jobs: Ubuntu full verification, macOS focused synthetic CLI tests, Windows focused synthetic CLI tests |
 | `0c8bc5c`, 2026-10-05 | Local focused `NodeSuiteCloud*Test` run | Passed 28 tests across four suites on macOS/JDK 21; zero failures/errors/skips |
 
@@ -29,17 +32,26 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home \
 Local evidence locations, relative to the candidate checkout unless shown as absolute:
 
 - Test results: `build/test-results/test/TEST-*.xml` and `build/reports/tests/test/`.
-- Verifier verdicts: `build/reports/pluginVerifier/WS-261.22158.274/plugins/com.sdf.accountstatus/0.2.0/verification-verdict.txt` and corresponding `WS-262.8665.259` path.
-- ZIP: `build/distributions/netsuite-sdf-account-status-0.2.0.zip`.
-- Gate log: `/private/tmp/sdf-030-candidate-final-gate.log`.
+- Verifier verdicts: `build/reports/pluginVerifier/WS-261.22158.274/plugins/com.sdf.accountstatus/0.3.0/verification-verdict.txt` and corresponding `WS-262.8665.259` path.
+- ZIP: `build/distributions/netsuite-sdf-account-status-0.3.0.zip`.
+- Release-preparation gate log: `/private/tmp/sdf-030-release-gate.log`.
+- Historical `8543334` gate log: `/private/tmp/sdf-030-candidate-final-gate.log`.
 - Prior combined gate log: `/private/tmp/sdf-030-candidate-gate.log`.
 - Focused local CLI log: `/private/tmp/sdf-030-cli-platforms-tests.log`.
 
-Current inspected ZIP SHA-256:
+Current inspected **0.3.0** ZIP from `c280bdd`, SHA-256:
+
+```text
+3b56bc27be448c54e61833474b77197133e6c7c6e0984b7be628d5b908d40320
+```
+
+Historical **0.2.0-labelled** development ZIP from `8543334`, SHA-256:
 
 ```text
 367c6d0e3636440bde864117cf3fa65e1592345afbaccb7d81539878d63c929c
 ```
+
+These are distinct artifacts; the historical checksum is not the release-preparation ZIP checksum.
 
 Generated results and temporary logs are not committed and may be replaced by later runs. This record retains their observed result and exact revision; record new revision-specific evidence when preparing the versioned release artifact.
 
@@ -47,7 +59,7 @@ The integrated suite covers workflow/gateway persistence, real IntelliJ document
 
 ## Manual IDE matrix — not yet verified
 
-An isolated synthetic WebStorm 2026.1 process was launched on 2026-10-05, but the UI automation tool could not attach to its development Java application. The process was stopped; no completed manual observation is claimed. The standard `runIde` task also encountered an unavailable optional Compose hot-reload agent (`1.1.0-alpha03`); the attempted smoke session disabled that unused agent through a local init script. These are development-environment limitations, not passing UI checks.
+An isolated synthetic WebStorm 2026.1 process was launched on 2026-10-05, but the UI automation tool could not attach to its development Java application. The process was stopped; no completed manual observation is claimed. The standard `runIde` task also encountered an unavailable optional Compose hot-reload agent (`1.1.0-alpha03`); the attempted smoke session disabled that unused agent through a local init script. These are development-environment limitations, not passing UI checks. A native signed-app launch alternative is being investigated; no new manual pass has been established.
 
 Each box below remains open until observed in that IDE version. Record source/ZIP checksum, IDE build, OS, Oracle plugin version when relevant, and concise results. Use synthetic data or the dedicated test setup; exclude credentials and customer identifiers from evidence.
 
@@ -96,10 +108,14 @@ Focused draft PRs are available and attached to the task:
 | [#7](https://github.com/Gfacello/SDF-Account-Status/pull/7) | Rich status display |
 | [#8](https://github.com/Gfacello/SDF-Account-Status/pull/8) | Node provider and synthetic OS CI |
 | [#9](https://github.com/Gfacello/SDF-Account-Status/pull/9) | Error-reporting documentation |
+| [#10](https://github.com/Gfacello/SDF-Account-Status/pull/10) | Integrated candidate targeting `main` |
 
-All are drafts; creation is not approval or merging. Integrated Add Account/provider configuration and review fixes are on the candidate branch. Earlier committed implementation branches were pushed; the candidate worktree is durable after the temporary checkouts disappeared.
+All are drafts; creation is not approval or merging. Integrated Add Account/provider configuration and review fixes are on the candidate branch. The dependent release-preparation PR is being prepared; its confirmed URL is still pending. Earlier committed implementation branches were pushed; the candidate worktree is durable after the temporary checkouts disappeared.
 
-- [ ] Create `chore/release-0.3.0`, set version `0.3.0` and finalize verified changelog/Marketplace notes.
-- [ ] Run final local and remote gates for that exact revision, inspect its versioned ZIP and record its checksum.
-- [ ] Complete manual/live evidence, resolve review findings and prepare the release-preparation PR and post-merge checklist.
+- [x] Create `chore/release-0.3.0`, set version `0.3.0`, and prepare candidate changelog/Marketplace notes at `c280bdd`.
+- [x] Pass the complete local gate for `c280bdd`, inspect its versioned ZIP and record its checksum.
+- [x] Prepare the [post-merge release checklist](RELEASE-0.3.0.md), including final-main CI, clean checkout, signing, checksum, immutable tag and publication actions.
+- [ ] Record passing remote CI for the exact release-preparation revision.
+- [ ] Complete manual/live evidence and resolve review findings; only then finalize publication-date notes and verified provider/setup inclusion.
+- [ ] Create and record the release-preparation PR URL, then complete the review handoff.
 - [ ] Hand off the reviewable candidate. Do not merge the release-preparation PR, push a release tag or publish Marketplace/GitHub releases without subsequent authorization.
