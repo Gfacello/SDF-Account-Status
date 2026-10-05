@@ -201,6 +201,94 @@ class AccountPickerModelTest {
         assertEquals(model, model.filtered("  "))
     }
 
+    @Test
+    fun `combines query environment and exact role without conflating account identities`() {
+        val model = AccountPickerModelBuilder.build(
+            accounts = listOf(
+                authentication("sandbox-admin", "123456_SB1: Acme Example Corp [Administrator]"),
+                authentication("sandbox-dev", "123456_SB1: Acme Example Corp [Developer]"),
+                authentication("production-dev", "123456: Acme Example Corp [Developer]"),
+                authentication("other-dev", "654321_SB1: Other Example Corp [Developer]")
+            ),
+            currentAuthenticationId = "sandbox-admin"
+        )
+
+        val filters = AccountPickerFilterState("acme", AccountEnvironment.SANDBOX, "Developer")
+        val filtered = model.filtered(filters)
+
+        assertEquals(listOf("sandbox-dev"), filtered.ids())
+        assertTrue(filtered.accounts.single().isRecommended)
+        assertEquals("sandbox-admin", filtered.currentAuthenticationId)
+        assertFalse(filtered.currentAuthenticationMissing)
+        assertEquals(
+            listOf("production-dev", "sandbox-dev"),
+            model.filtered(filters.copy(environment = null)).ids()
+        )
+        assertEquals(
+            listOf("sandbox-admin", "sandbox-dev"),
+            model.filtered(filters.copy(role = null)).ids()
+        )
+        assertTrue(model.filtered(filters.copy(role = "Develop")).accounts.isEmpty())
+        assertEquals(4, model.accounts.size)
+    }
+
+    @Test
+    fun `environment constraints use account metadata and never authentication name hints`() {
+        val model = AccountPickerModelBuilder.build(
+            accounts = listOf(
+                authentication("sandbox-developer", "123456: Acme Example Corp [Developer]"),
+                authentication("production-admin", "123456_SB1: Acme Example Corp [Administrator]"),
+                authentication("prod-sandbox-unknown", "TSTDRV0000000: Training [Viewer]"),
+                authentication("sb-missing-details", ""),
+                authentication("sandbox-preview", "123456_RP: Acme Example Corp [Viewer]")
+            ),
+            currentAuthenticationId = null
+        )
+
+        assertEquals(
+            listOf("sandbox-developer"),
+            model.filtered(AccountPickerFilterState(environment = AccountEnvironment.PRODUCTION)).ids()
+        )
+        assertEquals(
+            listOf("production-admin"),
+            model.filtered(AccountPickerFilterState(environment = AccountEnvironment.SANDBOX)).ids()
+        )
+        assertEquals(
+            setOf("prod-sandbox-unknown", "sb-missing-details"),
+            model.filtered(AccountPickerFilterState(environment = AccountEnvironment.UNKNOWN)).ids().toSet()
+        )
+        assertEquals(
+            listOf("sandbox-preview"),
+            model.filtered(AccountPickerFilterState(environment = AccountEnvironment.RELEASE_PREVIEW)).ids()
+        )
+    }
+
+    @Test
+    fun `role choices are unique complete and sorted while matching groups retain their order`() {
+        val model = AccountPickerModelBuilder.build(
+            accounts = listOf(
+                authentication("current", "123456_SB1: Acme Example Corp [Developer]"),
+                authentication("acme-production", "123456: Acme Example Corp [Developer]"),
+                authentication("blue-admin", "654321: Blue Example Corp [Administrator]"),
+                authentication("blue-dev", "654321_SB1: Blue Example Corp [Developer]"),
+                authentication("unknown", "")
+            ),
+            currentAuthenticationId = "current"
+        )
+
+        assertEquals(listOf("Administrator", "Developer"), model.availableRoles)
+        val filtered = model.filtered(AccountPickerFilterState(role = "Developer"))
+        assertEquals(listOf("current", "acme-production", "blue-dev"), filtered.ids())
+        assertEquals(listOf("Administrator", "Developer"), model.availableRoles)
+        assertTrue(filtered.accounts.first().isCurrent)
+        assertTrue(filtered.accounts[1].isRecommended)
+        assertFalse(filtered.accounts.last().isRecommended)
+        val noMatches = model.filtered(AccountPickerFilterState("no such customer"))
+        assertTrue(noMatches.accounts.isEmpty())
+        assertTrue(noMatches.sections.all { it.groups.isEmpty() })
+        assertEquals(model, model.filtered(AccountPickerFilterState()))
+    }
+
     private fun AccountPickerModel.section(section: AccountPickerSection) =
         sections.single { it.kind == section }
 
