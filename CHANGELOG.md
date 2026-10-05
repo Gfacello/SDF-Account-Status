@@ -4,8 +4,27 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.0] - Unreleased candidate
+
+Prepared for review on 2026-10-05. Manual IDE and live Node/Oracle Account Management compatibility checks remain required before release; see [the validation record](docs/VALIDATION-0.3.0.md). The publication date and final inclusion of the provider/setup flow remain subject to those gates.
+
 ### Added
+
+- Refresh accounts without closing the picker or losing valid search, environment, and role filters.
+- Combine environment and role selectors with text search, matching counts, and a clear-filters action.
+- Choose a persistent account-details status style with company, environment, role, complete tooltips, and accessible descriptions.
 - Open the current or selected account in NetSuite from mouse or keyboard context menus, using a locally saved account URL without changing the project default.
+- Discover account metadata through the public Node.js SuiteCloud CLI, with local provider/path settings and an explicit legacy Java provider choice.
+- Start account setup through Oracle's WebStorm Account Management settings, then reload the picker without selecting a new default.
+- Run synthetic CLI process checks on Windows and macOS alongside the Ubuntu verification job.
+
+### Improved
+
+- Separate account workflow and document persistence, read a single project snapshot, publish coherent account state on the UI thread, and share status formatting.
+- Preserve complete filters after cancelled production confirmation and verify that the requested default survives document save listeners.
+- Reject stale or disposed background work and keep provider path filesystem checks off the UI thread.
+- Prevent context-menu gestures from activating accounts and retain explanations when a selected role disappears during refresh.
+- Clarify that IDE preferences control manual or automatic JetBrains Marketplace exception reporting.
 
 ## [0.2.0] - 2026-09-07
 
