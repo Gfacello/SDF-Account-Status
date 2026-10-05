@@ -27,12 +27,26 @@ class AccountProviderConfigurationTest {
     }
 
     @Test
-    fun `relative malformed missing and directory paths identify the responsible field`() {
-        for (path in listOf("node", "relative/node", "bad\u0000path", root.resolve("missing-node").toString(), root.toString())) {
-            assertEquals(ProviderPathField.NODE_EXECUTABLE, AccountProviderConfiguration(nodeExecutable = path).validationError()?.field)
+    fun `relative and malformed paths identify the responsible field without filesystem checks`() {
+        for (path in listOf("node", "relative/node", "bad\u0000path")) {
+            assertEquals(ProviderPathField.NODE_EXECUTABLE, AccountProviderConfiguration(nodeExecutable = path).syntaxError()?.field)
         }
-        for (path in listOf("suitecloud.js", "bad\u0000path", root.resolve("missing.js").toString(), root.toString())) {
-            assertEquals(ProviderPathField.SUITECLOUD_LAUNCHER, AccountProviderConfiguration(suiteCloudLauncher = path).validationError()?.field)
+        for (path in listOf("suitecloud.js", "bad\u0000path")) {
+            assertEquals(ProviderPathField.SUITECLOUD_LAUNCHER, AccountProviderConfiguration(suiteCloudLauncher = path).syntaxError()?.field)
+        }
+    }
+
+    @Test
+    fun `absolute missing files and directories pass dialog syntax but fail worker filesystem validation`() {
+        for (path in listOf(root.resolve("missing-node").toString(), root.toString())) {
+            val configuration = AccountProviderConfiguration(nodeExecutable = path)
+            assertNull(configuration.syntaxError())
+            assertEquals(ProviderPathField.NODE_EXECUTABLE, configuration.validationError()?.field)
+        }
+        for (path in listOf(root.resolve("missing.js").toString(), root.toString())) {
+            val configuration = AccountProviderConfiguration(suiteCloudLauncher = path)
+            assertNull(configuration.syntaxError())
+            assertEquals(ProviderPathField.SUITECLOUD_LAUNCHER, configuration.validationError()?.field)
         }
     }
 

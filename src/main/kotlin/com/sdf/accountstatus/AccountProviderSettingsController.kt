@@ -12,7 +12,7 @@ internal class AccountProviderSettingsController(
         if (isUnavailable()) return
         val selected = prompt(preferences.providerConfiguration)?.normalized() ?: return
         if (isUnavailable()) return
-        val error = selected.validationError()
+        val error = selected.syntaxError()
         if (error != null) {
             showError(error)
             return

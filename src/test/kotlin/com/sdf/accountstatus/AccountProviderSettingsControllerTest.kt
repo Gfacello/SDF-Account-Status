@@ -1,10 +1,16 @@
 package com.sdf.accountstatus
 
+import com.sdf.accountstatus.core.SdfAuthListLoadResult
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class AccountProviderSettingsControllerTest {
+    @TempDir lateinit var root: Path
+
     @Test
     fun `applying a provider atomically saves selection and paths before callback`() {
         val selected = AccountProviderConfiguration(AccountProviderKind.LEGACY_JAVA, " /custom node ", " /custom/suitecloud.js ")
@@ -27,12 +33,31 @@ class AccountProviderSettingsControllerTest {
     }
 
     @Test
-    fun `invalid Node configuration keeps old selection and reports actionable error`() {
+    fun `invalid path syntax keeps old selection and reports actionable error`() {
         val fixture = Fixture(AccountProviderConfiguration(nodeExecutable = "relative-path"))
         fixture.controller.configure()
         assertEquals(AccountProviderConfiguration(), fixture.preferences.providerConfiguration)
         assertEquals(ProviderPathField.NODE_EXECUTABLE, fixture.errors.single().field)
         assertTrue(fixture.applied.isEmpty())
+    }
+
+    @Test
+    fun `an absolute missing path is saved without probing it and fails only during account loading`() {
+        val selected = AccountProviderConfiguration(nodeExecutable = root.resolve("missing node").toString())
+        val fixture = Fixture(selected)
+        fixture.controller.configure()
+        assertEquals(selected, fixture.preferences.providerConfiguration)
+        assertEquals(listOf(selected), fixture.applied)
+        assertTrue(fixture.errors.isEmpty())
+
+        val provider = ConfiguredAccountProvider(
+            fixture.preferences,
+            loadNode = { error("An invalid explicit path must not launch Node") },
+            loadLegacy = { error("An invalid explicit path must not fall back to Java") }
+        )
+        val result = assertIs<SdfAuthListLoadResult.Unavailable>(provider.load())
+        assertEquals("Node.js CLI: Select an existing, readable file. Check Account provider settings.", result.message)
+        assertEquals(selected, fixture.preferences.providerConfiguration)
     }
 
     @Test

@@ -20,19 +20,33 @@ internal data class AccountProviderConfiguration(
         suiteCloudLauncher = suiteCloudLauncher.trim()
     )
 
-    fun validationError(): ProviderConfigurationError? {
+    /** Safe for dialog validation on EDT: no filesystem access or symlink resolution. */
+    fun syntaxError(): ProviderConfigurationError? {
         // Retain inactive Node paths so an explicit switch to Java does not require a Node install.
         if (provider == AccountProviderKind.LEGACY_JAVA) return null
-        validatePath(nodeExecutable, ProviderPathField.NODE_EXECUTABLE)?.let { return it }
-        return validatePath(suiteCloudLauncher, ProviderPathField.SUITECLOUD_LAUNCHER)
+        validateSyntax(nodeExecutable, ProviderPathField.NODE_EXECUTABLE)?.let { return it }
+        return validateSyntax(suiteCloudLauncher, ProviderPathField.SUITECLOUD_LAUNCHER)
     }
 
-    private fun validatePath(value: String, field: ProviderPathField): ProviderConfigurationError? {
+    /** Run in the account-loading worker; mounted paths can block while probing the filesystem. */
+    fun validationError(): ProviderConfigurationError? {
+        syntaxError()?.let { return it }
+        if (provider == AccountProviderKind.LEGACY_JAVA) return null
+        validateFile(nodeExecutable, ProviderPathField.NODE_EXECUTABLE)?.let { return it }
+        return validateFile(suiteCloudLauncher, ProviderPathField.SUITECLOUD_LAUNCHER)
+    }
+
+    private fun validateSyntax(value: String, field: ProviderPathField): ProviderConfigurationError? {
         if (value.isBlank()) return null
         val path = runCatching { Path.of(value.trim()) }.getOrNull()
-        if (path == null || !path.isAbsolute) {
-            return ProviderConfigurationError(field, "Enter an absolute path or leave this field blank for automatic detection.")
-        }
+        return if (path == null || !path.isAbsolute)
+            ProviderConfigurationError(field, "Enter an absolute path or leave this field blank for automatic detection.")
+        else null
+    }
+
+    private fun validateFile(value: String, field: ProviderPathField): ProviderConfigurationError? {
+        if (value.isBlank()) return null
+        val path = Path.of(value.trim())
         val regularFile = runCatching { Files.isRegularFile(path) && Files.isReadable(path) }.getOrDefault(false)
         if (!regularFile) return ProviderConfigurationError(field, "Select an existing, readable file.")
         return when (field) {
