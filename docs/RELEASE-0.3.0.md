@@ -12,18 +12,18 @@ The release branch sets artifact version `0.3.0`; it does not establish readines
 
 ## Recorded validation
 
-Release source `c280bdd` passed the local full gate and 0.3.0 ZIP inspection; release head `bdc9c00` adds documentation only. The inspected source/artifact checksum and test counts are in [VALIDATION-0.3.0.md](VALIDATION-0.3.0.md).
+Release source `c280bdd` passed the local full gate and 0.3.0 ZIP inspection; latest observed release head `ca819ac` adds documentation only. The inspected source/artifact checksum and test counts are in [VALIDATION-0.3.0.md](VALIDATION-0.3.0.md).
 
-Integrated candidate [PR #10 CI run 37353758331](https://github.com/Gfacello/SDF-Account-Status/actions/runs/37353758331) passed all three jobs for head `6787477`: Ubuntu full verification plus macOS/Windows synthetic CLI tests. The PR workflow artifact uses merge revision `65537f21db98553b9cb2c7ad88d1f44801effdea`, not the head SHA. Release [PR #11 run 37355038442](https://github.com/Gfacello/SDF-Account-Status/actions/runs/37355038442) also passed all three jobs for head `bdc9c00` (Ubuntu 3m 52s; total 5m 0s), with artifact merge revision `b40d0f80a4a62c672ab9dab2ad8107a80e846e1f`. These results do not establish the next documentation commit's CI result. Manual/live gates and review completion remain open.
+Integrated candidate [PR #10 CI run 37353758331](https://github.com/Gfacello/SDF-Account-Status/actions/runs/37353758331) passed all three jobs for head `6787477`: Ubuntu full verification plus macOS/Windows synthetic CLI tests. The PR workflow artifact uses merge revision `65537f21db98553b9cb2c7ad88d1f44801effdea`, not the head SHA. The latest observed release [PR #11 run 37356754447](https://github.com/Gfacello/SDF-Account-Status/actions/runs/37356754447) passed all three jobs for head `ca819ac`, with artifact merge revision `ff77d6e8b9adb74465ac92ea99d980a747fa9bc6`. The PR description has been updated with this CI evidence and the verified 261 interactions. Documentation updates require fresh CI observation before approval. Manual/live gates and review completion remain open.
 
-Native WebStorm 2026.1 displayed the 0.3.0 plugin's synthetic sandbox status and account metadata. Picker interaction, licensing readiness and the complete manual matrix remain unverified; see the partial observations in the validation record.
+Native WebStorm 2026.1 demonstrated specific synthetic search/filter, refresh retention, missing-Oracle guidance and production Cancel/Confirm interactions, including disk-default preservation/update checks. Native WebStorm 2026.2 demonstrated plugin load and sandbox status/metadata only. Input remained unreliable; licensing readiness and the complete manual matrix remain unverified. See the partial observations in the validation record.
 
 ## Before approving the release-preparation PR
 
 - [ ] Complete the manual matrix for WebStorm 2026.1 and 2026.2.
 - [ ] Demonstrate dedicated-account Node/legacy/Oracle identity and role parity, Add Account completion/cancellation, and unchanged project defaults.
 - [ ] Resolve review findings; preserve all selected features unless a scope change is explicitly approved.
-- [x] Record the local `c280bdd` gate/ZIP and passing remote PR #11 checks for head `bdc9c00`.
+- [x] Record the local `c280bdd` gate/ZIP and passing remote PR #11 checks for head `ca819ac`.
 - [ ] Observe final CI after subsequent documentation changes; inspect/validate any newly changed artifact before approval.
 - [ ] Replace the candidate changelog heading with the intended release date after the release is approved.
 
