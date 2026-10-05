@@ -145,8 +145,64 @@ class AccountPickerPanelTest {
         val warning = panel.label("Account picker warning")
         assertTrue(warning.isVisible)
         assertTrue(warning.text.contains("Selected role is no longer available"))
+        panel.showAccounts(AccountPickerModelBuilder.build(
+            listOf(SdfAuthentication("sandbox-admin", "123456_SB1: Acme Example Corp [Administrator]")),
+            "sandbox-admin"
+        ))
+        panel.restoreFilterState(panel.filterState())
+        assertTrue(warning.isVisible, "An unchanged model or filter render must retain the explanation")
+        assertTrue(warning.text.contains("Selected role is no longer available"))
         panel.searchField.text = "acme sandbox"
         assertFalse(warning.isVisible)
+    }
+
+    @Test
+    fun `clearing filters or explicitly refreshing dismisses an earlier removed role notice`() = onEdt {
+        val panel = AccountPickerPanel({}, {}, {})
+        val refreshed = AccountPickerModelBuilder.build(
+            listOf(SdfAuthentication("sandbox-admin", "123456_SB1: Acme Example Corp [Administrator]")),
+            "sandbox-admin"
+        )
+        fun removeSelectedRole() {
+            panel.showAccounts(model())
+            panel.restoreFilterState(AccountPickerFilterState(role = "Developer"))
+            panel.showLoading()
+            panel.showAccounts(refreshed)
+            assertEquals(AccountPickerFilterState(), panel.filterState())
+            assertTrue(panel.label("Account picker warning").isVisible)
+        }
+
+        removeSelectedRole()
+        panel.clearFilters()
+        assertFalse(panel.label("Account picker warning").isVisible,
+            "Clear filters must dismiss the notice even when the removed role was the only filter")
+
+        removeSelectedRole()
+        panel.refreshButton().doClick()
+        panel.showAccounts(refreshed)
+        assertFalse(panel.label("Account picker warning").isVisible)
+
+        removeSelectedRole()
+        panel.showUnavailable("Account read failed")
+        panel.link("Retry").doClick()
+        panel.showAccounts(refreshed)
+        assertFalse(panel.label("Account picker warning").isVisible)
+    }
+
+    @Test
+    fun `changing environment or role dismisses the removed role notice`() = onEdt {
+        val panel = AccountPickerPanel({}, {}, {})
+        panel.showAccounts(model())
+        panel.restoreFilterState(AccountPickerFilterState(role = "Removed role"))
+        assertTrue(panel.label("Account picker warning").isVisible)
+
+        panel.environmentSelector().choose("Sandbox")
+        assertFalse(panel.label("Account picker warning").isVisible)
+
+        panel.restoreFilterState(panel.filterState().copy(role = "Removed role"))
+        assertTrue(panel.label("Account picker warning").isVisible)
+        panel.roleSelector().choose("Administrator")
+        assertFalse(panel.label("Account picker warning").isVisible)
     }
 
     @Test
@@ -238,6 +294,87 @@ class AccountPickerPanelTest {
     }
 
     @Test
+    fun `add account works from loading loaded empty and unavailable states without changing filters`() = onEdt {
+        var added = 0
+        var refreshed = 0
+        val selected = mutableListOf<String>()
+        val panel = AccountPickerPanel({ selected += it.authenticationId }, { refreshed++ }, {},
+            onAddAccount = { added++ })
+        val add = panel.addAccountButton()
+        assertTrue(add.isVisible)
+        assertTrue(add.isEnabled)
+        add.activateWithSpace()
+        assertEquals(1, added)
+
+        panel.showAccounts(model())
+        val filters = AccountPickerFilterState("acme", AccountEnvironment.SANDBOX, "Developer")
+        panel.restoreFilterState(filters)
+        add.doClick()
+        assertEquals(2, added)
+        assertEquals(filters, panel.filterState())
+
+        panel.showAccounts(AccountPickerModelBuilder.build(emptyList(), null))
+        assertTrue(add.isEnabled)
+        add.doClick()
+        panel.showUnavailable("Account provider is unavailable", canRetry = false)
+        assertTrue(add.isEnabled)
+        add.doClick()
+
+        assertEquals(4, added)
+        assertEquals(0, refreshed)
+        assertTrue(selected.isEmpty(), "Starting setup must not activate an account")
+    }
+
+    @Test
+    fun `setup and account activation prevent duplicate add actions and conflicting account actions`() = onEdt {
+        var added = 0
+        var refreshed = 0
+        var selected = 0
+        var contextMenus = 0
+        val panel = AccountPickerPanel({ selected++ }, { refreshed++ }, {},
+            onAccountContext = { _, _, _ -> contextMenus++ }, onAddAccount = { added++ })
+        panel.showAccounts(model())
+        val add = panel.addAccountButton()
+
+        panel.setAccountSetupInProgress(true)
+        assertFalse(add.isEnabled)
+        assertFalse(panel.refreshButton().isEnabled)
+        assertFalse(panel.environmentSelector().isEnabled)
+        assertFalse(panel.roleSelector().isEnabled)
+        assertFalse(panel.table().isEnabled)
+        add.doClick()
+        panel.refreshButton().doClick()
+        panel.searchField.textEditor.pressEnter()
+        panel.table().keyListeners.forEach { listener ->
+            listener.keyPressed(KeyEvent(panel.table(), KeyEvent.KEY_PRESSED, 0, 0,
+                KeyEvent.VK_CONTEXT_MENU, KeyEvent.CHAR_UNDEFINED))
+        }
+        assertEquals(0, added)
+        assertEquals(0, refreshed)
+        assertEquals(0, selected)
+        assertEquals(0, contextMenus)
+
+        panel.setAccountSetupInProgress(false)
+        assertTrue(add.isEnabled)
+        assertTrue(panel.refreshButton().isEnabled)
+        panel.setAccountActivationInProgress(true)
+        assertFalse(add.isEnabled)
+        add.doClick()
+        assertEquals(0, added)
+        panel.setAccountActivationInProgress(false)
+        add.doClick()
+        assertEquals(1, added)
+    }
+
+    @Test
+    fun `add account is omitted when no setup callback is available`() = onEdt {
+        val panel = AccountPickerPanel({}, {}, {})
+        panel.showAccounts(model())
+        assertFalse(panel.addAccountButton().isVisible)
+        assertFalse(panel.addAccountButton().isEnabled)
+    }
+
+    @Test
     fun `restores the entire filter state into a reopened panel before accounts load`() = onEdt {
         val state = AccountPickerFilterState("acme", AccountEnvironment.PRODUCTION, "Developer")
         val original = AccountPickerPanel({}, {}, {})
@@ -291,14 +428,51 @@ class AccountPickerPanelTest {
     }
 
     @Test
-    fun `refresh selectors and clear action are accessible and fit the minimum picker width`() = onEdt {
-        val panel = AccountPickerPanel({}, {}, {})
+    fun `control double click opens the filtered account context without activating it`() = onEdt {
+        val selected = mutableListOf<String>()
+        val contexts = mutableListOf<String>()
+        val panel = AccountPickerPanel({ selected += it.authenticationId }, {}, {},
+            onAccountContext = { account, _, _ -> contexts += account.authenticationId },
+            onAddAccount = {})
+        panel.showAccounts(model())
+        val filters = AccountPickerFilterState("acme", AccountEnvironment.SANDBOX, "Developer")
+        panel.restoreFilterState(filters)
+        UIUtil.dispatchAllInvocationEvents()
+        val table = panel.table()
+        val bounds = table.getCellRect(table.selectedRow, 0, true)
+        // BasicTableUI's press listener asks the native toolkit for its menu shortcut, which is
+        // unavailable headlessly. Exercise the panel's listener on the real table instead.
+        val pickerMouseListener = table.mouseListeners.single {
+            it.javaClass.enclosingClass == AccountPickerPanel::class.java
+        }
+        val press = MouseEvent(table, MouseEvent.MOUSE_PRESSED, 0, KeyEvent.CTRL_DOWN_MASK,
+            bounds.x + 8, bounds.y + bounds.height / 2, 2, true, MouseEvent.BUTTON1)
+        pickerMouseListener.mousePressed(press)
+        assertTrue(press.isConsumed)
+        assertEquals(listOf("sandbox-dev"), contexts)
+
+        listOf(KeyEvent.CTRL_DOWN_MASK to false, 0 to true).forEach { (modifiers, popupTrigger) ->
+            val click = MouseEvent(table, MouseEvent.MOUSE_CLICKED, 0, modifiers,
+                bounds.x + 8, bounds.y + bounds.height / 2, 2, popupTrigger, MouseEvent.BUTTON1)
+            pickerMouseListener.mouseClicked(click)
+        }
+        assertTrue(selected.isEmpty(), "A context-menu gesture must never switch the project account")
+        assertEquals(filters, panel.filterState())
+        pickerMouseListener.mouseClicked(MouseEvent(table, MouseEvent.MOUSE_CLICKED, 0, 0,
+            bounds.x + 8, bounds.y + bounds.height / 2, 2, false, MouseEvent.BUTTON1))
+        assertEquals(listOf("sandbox-dev"), selected, "The same listener must still activate a normal double click")
+    }
+
+    @Test
+    fun `refresh add selectors and clear action are accessible and fit the minimum picker width`() = onEdt {
+        val panel = AccountPickerPanel({}, {}, {}, onAddAccount = {})
         panel.showAccounts(model())
         panel.restoreSearchQuery("acme")
         panel.setSize(panel.minimumSize)
         panel.layoutRecursively()
 
-        listOf(panel.refreshButton(), panel.environmentSelector(), panel.roleSelector(), panel.link("Clear filters")).forEach {
+        listOf(panel.refreshButton(), panel.addAccountButton(), panel.environmentSelector(),
+            panel.roleSelector(), panel.link("Clear filters")).forEach {
             assertTrue(it.isFocusable)
             assertTrue(it.accessibleContext.accessibleName.isNotBlank())
             assertTrue(it.width > 0)
@@ -311,7 +485,12 @@ class AccountPickerPanelTest {
         assertTrue(panel.refreshButton().mnemonic != 0)
         assertEquals("Refresh SuiteCloud accounts", panel.refreshButton().toolTipText)
         assertTrue(panel.refreshButton().icon != null)
-        assertTrue(panel.searchField.width > 200, "Refresh must leave room for the account query")
+        assertTrue(panel.addAccountButton().mnemonic != 0)
+        assertTrue(panel.addAccountButton().icon != null)
+        assertTrue(panel.searchField.width > 200, "Refresh and Add must leave room for the account query")
+        val refreshBounds = SwingUtilities.convertRectangle(panel.refreshButton().parent, panel.refreshButton().bounds, panel)
+        val addBounds = SwingUtilities.convertRectangle(panel.addAccountButton().parent, panel.addAccountButton().bounds, panel)
+        assertFalse(refreshBounds.intersects(addBounds), "The two account actions must not overlap")
     }
 
     @Test
@@ -351,6 +530,8 @@ class AccountPickerPanelTest {
     private fun AccountPickerPanel.table() = descendants().filterIsInstance<TreeTable>().single()
     private fun AccountPickerPanel.refreshButton() = descendants().filterIsInstance<JButton>()
         .single { it.accessibleContext.accessibleName == "Refresh SuiteCloud accounts" }
+    private fun AccountPickerPanel.addAccountButton() = descendants().filterIsInstance<JButton>()
+        .single { it.accessibleContext.accessibleName == "Add an account" }
     private fun AccountPickerPanel.status() = label("Account picker status")
     private fun AccountPickerPanel.label(name: String) = descendants().filterIsInstance<JBLabel>()
         .single { it.accessibleContext.accessibleName == name }
