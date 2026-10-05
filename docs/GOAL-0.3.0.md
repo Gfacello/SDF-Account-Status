@@ -1,6 +1,6 @@
 # Goal: prepare NetSuite SDF Account Status 0.3.0 for release
 
-Status: active. On 2026-10-05 the committed branches were recovered into the durable `.worktrees/candidate` checkout and integrated on `feature/0.3.0-candidate`. The release-preparation branch `chore/release-0.3.0` now sets version `0.3.0`; source `c280bdd` passed the complete local automated gate and versioned ZIP inspection. Release head `bdc9c00` adds documentation only, and draft [PR #11](https://github.com/Gfacello/SDF-Account-Status/pull/11) targets `feature/0.3.0-candidate`. PR #11 CI passed all three jobs for head `bdc9c00`. Full manual/live validation, final CI observation after subsequent documentation changes and the review handoff remain outstanding. Candidate notes retain an Unreleased heading; no publication date is finalized. Nothing in this checklist authorizes publication, a release tag, or merging the release-preparation PR.
+Status: active. On 2026-10-05 the committed branches were recovered into the durable `.worktrees/candidate` checkout and integrated on `feature/0.3.0-candidate`. The release-preparation branch `chore/release-0.3.0` now sets version `0.3.0`; source `c280bdd` passed the complete local automated gate and versioned ZIP inspection. Latest observed release head `ca819ac` adds documentation only, and draft [PR #11](https://github.com/Gfacello/SDF-Account-Status/pull/11) targets `feature/0.3.0-candidate`. PR #11 CI passed all three jobs for head `ca819ac`. Full manual/live validation, final CI observation after subsequent documentation changes and the review handoff remain outstanding. Candidate notes retain an Unreleased heading; no publication date is finalized. Nothing in this checklist authorizes publication, a release tag, or merging the release-preparation PR.
 
 ## Objective and completion
 
@@ -79,7 +79,7 @@ All four selected refactors are implemented. Optional optimization investigation
 - [x] Add focused macOS/Windows synthetic CLI CI jobs while retaining Ubuntu's complete verification job.
 - [x] Record remote synthetic CLI execution on Windows and macOS: [PR #8 CI run](https://github.com/Gfacello/SDF-Account-Status/actions/runs/37350903593) passed all three jobs on `0c8bc5c`, including Ubuntu full verification. This is provider/fixture branch evidence, not integrated candidate CI.
 - [x] Record integrated candidate PR #10 CI: [run 37353758331](https://github.com/Gfacello/SDF-Account-Status/actions/runs/37353758331) passed all three jobs for PR head `6787477`; the workflow tested merge revision `65537f21db98553b9cb2c7ad88d1f44801effdea`.
-- [x] Record release PR #11 CI: [run 37355038442](https://github.com/Gfacello/SDF-Account-Status/actions/runs/37355038442) passed all three jobs for head `bdc9c00`, with workflow artifact merge revision `b40d0f80a4a62c672ab9dab2ad8107a80e846e1f`.
+- [x] Record release PR #11 CI: [run 37356754447](https://github.com/Gfacello/SDF-Account-Status/actions/runs/37356754447) passed all three jobs for head `ca819ac`, with workflow artifact merge revision `ff77d6e8b9adb74465ac92ea99d980a747fa9bc6`.
 - [ ] Observe CI for the final PR revision after subsequent documentation changes.
 - [ ] Complete live provider parity/runtime verification, or obtain an explicit alternative-scope decision.
 
@@ -107,7 +107,7 @@ Review: [PR #5 refresh/filters](https://github.com/Gfacello/SDF-Account-Status/p
 - [x] Pass the full gate on integrated source `8543334` after the provider filesystem-validation threading fix: 215 tests in 29 suites, zero failures/errors/skips, all 20 tasks executed, both WebStorm verifier verdicts Compatible.
 - [x] Inspect the fresh `8543334` ZIP: correct ID, version `0.2.0`, since-build `261` with no upper bound, expected library JAR, packaged LICENSE and Marketplace exception handler; checksum recorded in [VALIDATION-0.3.0.md](VALIDATION-0.3.0.md).
 - [x] Inspect the `0.3.0` release-preparation ZIP from `c280bdd`: expected single library JAR, correct ID/version/build bounds, LICENSE, both icons and error handler; checksum recorded in the validation document.
-- [ ] Complete the supported-IDE manual matrix in [VALIDATION-0.3.0.md](VALIDATION-0.3.0.md), including actual widget lifecycle/multiple projects and provider changes during a load. Native WebStorm 2026.1 showed the loaded plugin and synthetic sandbox status/metadata, but picker interaction and licensing readiness remain unverified; no complete matrix row is marked passed.
+- [ ] Complete the supported-IDE manual matrix in [VALIDATION-0.3.0.md](VALIDATION-0.3.0.md), including actual widget lifecycle/multiple projects and provider changes during a load. Native 2026.1 demonstrated specific synthetic picker/filter/refresh and production Cancel/Confirm interactions; native 2026.2 demonstrated plugin load and sandbox status/metadata only. Input remained unreliable, licensing readiness is unconfirmed, and no complete matrix row is marked passed.
 - [ ] Record live provider/setup observations, sanitized configuration and any remaining limitations.
 - [ ] Complete required PR reviews before integration into `main`; draft PR creation alone does not satisfy review requirements.
 
@@ -115,14 +115,14 @@ Required gate: `./gradlew clean test buildPlugin verifyPluginProjectConfiguratio
 
 ### 8. Prepare the release review
 
-Branch: `chore/release-0.3.0`, source/artifact gate at `c280bdd` and subsequent documentation-only head `bdc9c00`. Draft [PR #11](https://github.com/Gfacello/SDF-Account-Status/pull/11) targets `feature/0.3.0-candidate`; the integrated candidate review is draft [PR #10](https://github.com/Gfacello/SDF-Account-Status/pull/10), targeting `main`. Neither PR has been merged.
+Branch: `chore/release-0.3.0`, source/artifact gate at `c280bdd` and subsequent documentation-only head `ca819ac`. Draft [PR #11](https://github.com/Gfacello/SDF-Account-Status/pull/11) targets `feature/0.3.0-candidate`; the integrated candidate review is draft [PR #10](https://github.com/Gfacello/SDF-Account-Status/pull/10), targeting `main`. Neither PR has been merged.
 
 - [x] Set version `0.3.0` and prepare candidate changelog/Marketplace notes with preparation date 2026-10-05.
 - [ ] Finalize publication-date notes and provider/setup inclusion only after manual/live gates and review; the changelog currently remains **Unreleased candidate**.
 - [x] Align candidate provider prerequisites, local configuration, setup instructions and privacy documentation with the implementation; live compatibility limits remain explicit.
 - [x] Pass the complete local gate on release-preparation source `c280bdd`: 215 tests in 29 suites, zero failures/errors/skips, all 20 tasks executed in 33 seconds, both configured WebStorm verifier verdicts Compatible.
-- [x] Record passing remote CI for release PR #11 head `bdc9c00`; the workflow artifact was built from its GitHub merge revision, as recorded in the validation document.
-- [ ] Confirm final CI after the upcoming documentation-only push.
+- [x] Record passing remote CI for release PR #11 head `ca819ac`; the workflow artifact was built from its GitHub merge revision, as recorded in the validation document.
+- [ ] Observe fresh CI after documentation updates before approval.
 - [x] Create and attach draft [release-preparation PR #11](https://github.com/Gfacello/SDF-Account-Status/pull/11), targeting the candidate branch, with revision-specific evidence and unresolved gates.
 - [x] Prepare [RELEASE-0.3.0.md](RELEASE-0.3.0.md) with the post-merge checklist: final-main CI, clean checkout, signed ZIP, checksum, exact tag target and publication steps still requiring authorization.
 - [ ] Present the candidate and remaining release actions for review without merging the release-preparation PR, pushing a release tag or publishing.
