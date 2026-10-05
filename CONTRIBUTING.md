@@ -7,7 +7,9 @@ Contributions to NetSuite SDF Account Status are welcome. Keep changes focused, 
 - JDK 21
 - Git
 - Network access for the first Gradle and WebStorm dependency download
-- SuiteCloud CLI for Java only when manually exercising the account picker
+- An existing SuiteCloud CLI for Node.js installation and its required Node.js/Java runtimes when manually exercising the account picker; the candidate defaults to Node
+- An existing Java CLI installation only when testing the explicitly selected legacy provider
+- Oracle's SuiteCloud IDE Plug-in for WebStorm when manually validating **Add an account**
 
 The unit tests use synthetic CLI responses and do not require credentials or a local SuiteCloud installation.
 
@@ -83,7 +85,7 @@ Install that ZIP with WebStorm's **Settings | Plugins | Install Plugin from Disk
 ## Code and test guidelines
 
 - Keep filesystem and process I/O out of the Event Dispatch Thread.
-- Preserve the rule that only the read-only account-list CLI operation is executed.
+- Keep CLI discovery read-only: Node uses `account:manageauth --list` and `account:manageauth --info <authentication-id>`; the explicit legacy Java provider uses `manageauth -list`. Do not invoke account setup, authentication changes, or deployment commands from these providers.
 - Never log or surface raw CLI output in an exception or user-facing error.
 - Treat malformed output as an unavailable list rather than guessing.
 - Keep `project.json` mutations inside an IDE write command and leave the file unchanged on validation or save failure.

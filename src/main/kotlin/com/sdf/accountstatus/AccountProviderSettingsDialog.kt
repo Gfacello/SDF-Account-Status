@@ -35,12 +35,13 @@ internal class AccountProviderSettingsDialog(project: Project, initial: AccountP
         add(row("Node.js executable (optional absolute path)", node))
         add(row("SuiteCloud JavaScript entrypoint (optional absolute path)", launcher))
         add(JBLabel("Leave paths blank to detect an existing installation. These settings apply to all open projects."))
+        add(JBLabel("Paths are checked in the background when accounts are loaded. Any errors appear in the account picker."))
         add(JBLabel("Java CLI is a legacy fallback and must be selected explicitly. Provider failures never switch automatically."))
     }
 
     override fun getPreferredFocusedComponent(): JComponent = provider
 
-    override fun doValidate(): ValidationInfo? = configuration().validationError()?.let {
+    override fun doValidate(): ValidationInfo? = configuration().syntaxError()?.let {
         ValidationInfo(it.message, if (it.field == ProviderPathField.NODE_EXECUTABLE) node else launcher)
     }
 
