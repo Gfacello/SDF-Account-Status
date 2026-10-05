@@ -50,6 +50,14 @@ Before opening or merging a pull request, run the complete local gate:
 
 Plugin Verifier downloads the configured WebStorm versions and can take longer on its first run. Continuous integration runs the same test, package, structure, and compatibility checks.
 
+CI also runs the focused Node CLI tests on Windows and macOS with JDK 21:
+
+```bash
+./gradlew test --tests 'com.sdf.accountstatus.core.NodeSuiteCloud*Test'
+```
+
+In Windows PowerShell, use `./gradlew.bat` instead. These tests use synthetic output and Java subprocess fixtures; they do not install the SuiteCloud CLI or access real accounts. They cover launcher discovery, argument/path handling, time and output limits, cancellation, child-process cleanup, and provider behavior. Only the Unix symlink fixture is skipped on Windows, which has a separate npm-wrapper discovery fixture. Passing these tests does not establish live CLI/Oracle plugin authentication compatibility; record that check separately with a dedicated test account.
+
 ## Run a development IDE
 
 ```bash
