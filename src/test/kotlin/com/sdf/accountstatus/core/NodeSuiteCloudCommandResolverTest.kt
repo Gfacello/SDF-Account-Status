@@ -2,14 +2,18 @@ package com.sdf.accountstatus.core
 
 import java.nio.file.Files
 import java.nio.file.Path
+import org.junit.jupiter.api.condition.DisabledOnOs
+import org.junit.jupiter.api.condition.OS
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class NodeSuiteCloudCommandResolverTest {
+    private val nodeName = if (System.getProperty("os.name").startsWith("Windows")) "node.exe" else "node"
+
     @Test
     fun `uses explicit paths with spaces without invoking a wrapper`() = temporary { root ->
-        val node = executable(root.resolve("node runtime/node"))
+        val node = executable(root.resolve("node runtime/$nodeName"))
         val launcher = file(root.resolve("custom cli/suitecloud.js"))
         val result = NodeSuiteCloudCommandResolver(launcher, node, emptyList(), root, appData = null).resolve()
         assertEquals(node.toRealPath(), result.node)
@@ -19,7 +23,7 @@ class NodeSuiteCloudCommandResolverTest {
 
     @Test
     fun `discovers npm layout from absolute PATH directories`() = temporary { root ->
-        val node = executable(root.resolve("bin/node"))
+        val node = executable(root.resolve("bin/$nodeName"))
         val launcher = file(root.resolve("lib/node_modules/@oracle/suitecloud-cli/src/suitecloud.js"))
         val result = NodeSuiteCloudCommandResolver(searchDirectories = listOf(root.resolve("bin")), home = root, appData = null).resolve()
         assertEquals(node.toRealPath(), result.node)
@@ -27,8 +31,9 @@ class NodeSuiteCloudCommandResolverTest {
     }
 
     @Test
+    @DisabledOnOs(OS.WINDOWS, disabledReason = "Unix npm installs use symlinks; Windows npm wrapper discovery is tested separately")
     fun `resolves a Unix npm symlink to JavaScript`() = temporary { root ->
-        val node = executable(root.resolve("bin/node"))
+        val node = executable(root.resolve("bin/$nodeName"))
         val launcher = file(root.resolve("installed package/src/suitecloud.js"))
         val link = root.resolve("bin/suitecloud")
         Files.createSymbolicLink(link, launcher)
@@ -52,7 +57,7 @@ class NodeSuiteCloudCommandResolverTest {
 
     @Test
     fun `invalid explicit paths do not silently use another installation`() = temporary { root ->
-        val node = executable(root.resolve("bin/node"))
+        val node = executable(root.resolve("bin/$nodeName"))
         file(root.resolve("bin/suitecloud.js"))
         assertFailsWith<SuiteCloudCliUnavailableException> {
             NodeSuiteCloudCommandResolver(root.resolve("missing.js"), node, listOf(node.parent), root, appData = null).resolve()
@@ -64,7 +69,7 @@ class NodeSuiteCloudCommandResolverTest {
 
     @Test
     fun `rejects relative paths and shell launchers without known JS sibling`() = temporary { root ->
-        val node = executable(root.resolve("node"))
+        val node = executable(root.resolve(nodeName))
         val shell = executable(root.resolve("suitecloud"))
         assertFailsWith<SuiteCloudCliUnavailableException> {
             NodeSuiteCloudCommandResolver(shell, node, emptyList(), root, appData = null).resolve()
