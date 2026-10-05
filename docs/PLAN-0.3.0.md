@@ -1,6 +1,6 @@
 # NetSuite SDF Account Status 0.3.0 — scope and acceptance criteria
 
-Status: implementation integrated for review on `feature/0.3.0-candidate`, source revision `8543334` as of 2026-10-05. Version metadata remains `0.2.0` pending release preparation. Live compatibility, manual IDE checks, integrated release-preparation CI and the release-preparation PR remain outstanding; no release has been published.
+Status: implementation integrated on `feature/0.3.0-candidate` and submitted for review through draft [PR #10](https://github.com/Gfacello/SDF-Account-Status/pull/10), targeting `main`. Release-preparation branch `chore/release-0.3.0` sets version `0.3.0` at source `c280bdd`, which passed the complete local gate and ZIP inspection on 2026-10-05. Live compatibility, manual IDE checks, exact release-revision remote CI and review completion remain outstanding. The release-preparation PR is being prepared; no release has been published, and the changelog remains **Unreleased candidate**.
 
 Execution order, branch strategy, completion criteria and progress tracking are in [GOAL-0.3.0.md](GOAL-0.3.0.md); revision-specific evidence and the manual matrix are in [VALIDATION-0.3.0.md](VALIDATION-0.3.0.md). The goal is active. The initial draft and review-pause descriptions are historical; this update records implementation progress without changing the selected scope or acceptance criteria.
 
@@ -122,7 +122,7 @@ The Marketplace error handler is already registered and packaged in 0.2.0. This 
 - Resolve the Add an account feasibility questions and verify its acceptance criteria before release.
 - Manually check account setup and its return-to-picker flow, refresh, both status display styles, URL setup and browser opening, keyboard operation, loading states, and narrow layouts on the supported WebStorm versions.
 - Run the existing release checks in [RELEASING.md](RELEASING.md) once implementation is complete.
-- At release preparation, set version 0.3.0 and align the changelog and Marketplace change notes with delivered behavior.
+- Release preparation has set version 0.3.0 and aligned candidate notes with implemented behavior; finalize the publication date and verified scope only after manual/live gates and review.
 
 ## Environment and role filters
 
@@ -175,7 +175,7 @@ The Node.js CLI still requires a supported JDK as well as Node.js. Record requir
 
 ## Refactoring scope and validation
 
-Historical initial audit on 2026-09-21: 79 tests across nine classes were initially observed from an up-to-date run; a later fresh baseline run and complete baseline gate passed. On 2026-10-05 the integrated candidate at `83c2695` passed 213 tests in 29 suites, packaging/structure checks and both configured WebStorm verifiers. The subsequent source fix at `8543334` passed its own full gate: 215 tests in 29 suites, zero failures/errors/skips, all 20 tasks executed and both WebStorm verifiers Compatible. Focused Windows/macOS synthetic CLI jobs and Ubuntu full verification also passed on `0c8bc5c` in PR #8; those remote results apply to that branch revision. See [VALIDATION-0.3.0.md](VALIDATION-0.3.0.md). No runtime performance benchmark is claimed.
+Historical initial audit on 2026-09-21: 79 tests across nine classes were initially observed from an up-to-date run; a later fresh baseline run and complete baseline gate passed. On 2026-10-05 the integrated candidate at `83c2695` passed 213 tests in 29 suites, packaging/structure checks and both configured WebStorm verifiers. The subsequent source fix at `8543334` passed its own full gate: 215 tests in 29 suites, zero failures/errors/skips, all 20 tasks executed and both WebStorm verifiers Compatible. Focused Windows/macOS synthetic CLI jobs and Ubuntu full verification also passed on `0c8bc5c` in PR #8; those remote results apply to that branch revision. Release-preparation source `c280bdd` also passed the full gate with 215 tests/29 suites, zero failures/errors/skips and both WebStorm verifiers Compatible; all 20 tasks executed in 33 seconds, and its versioned 0.3.0 ZIP was inspected. The earlier 8543334 artifact was still labelled 0.2.0; these are distinct revisions/artifacts. See [VALIDATION-0.3.0.md](VALIDATION-0.3.0.md). No runtime performance benchmark is claimed.
 
 ### Better tests
 
@@ -209,11 +209,11 @@ These remain optional investigations and are not part of the selected refactorin
 - Measure CLI launches with multiple open projects before introducing a shared in-flight account-list request. Any shared cache must respect SDK configuration and explicit refresh.
 - Investigate local build startup: the offline test command still attempted a JetBrains release-list request, timed out, and fell back to cached metadata. Keep local tests from paying that network delay where the Gradle plugin supports it.
 
-The original implementation order has progressed to integration/release validation. Next: complete manual IDE checks and live Node/Oracle/Add Account validation, then prepare `chore/release-0.3.0` and its final local/remote checks. Keep unselected feature ideas and optional optimization projects deferred.
+The original implementation order has progressed to integration/release validation. Next: complete manual IDE checks and live Node/Oracle/Add Account validation, confirm remote CI for the release-preparation revision, and complete the review handoff. The versioned preparation branch/local gate/ZIP inspection and [post-merge checklist](RELEASE-0.3.0.md) are prepared; publication remains a separate authorized action. Keep unselected feature ideas and optional optimization projects deferred.
 
 ## Proposed release notes
 
-These remain a draft for release preparation. Live setup/default-preservation and provider compatibility claims require the open gates or an explicit scope decision before finalization. Focused draft reviews are [#3](https://github.com/Gfacello/SDF-Account-Status/pull/3), [#4](https://github.com/Gfacello/SDF-Account-Status/pull/4), [#5](https://github.com/Gfacello/SDF-Account-Status/pull/5), [#6](https://github.com/Gfacello/SDF-Account-Status/pull/6), [#7](https://github.com/Gfacello/SDF-Account-Status/pull/7), [#8](https://github.com/Gfacello/SDF-Account-Status/pull/8) and [#9](https://github.com/Gfacello/SDF-Account-Status/pull/9). The release-preparation PR has not yet been created.
+These remain a draft for release preparation. Live setup/default-preservation and provider compatibility claims require the open gates or an explicit scope decision before finalization. Focused draft reviews are [#3](https://github.com/Gfacello/SDF-Account-Status/pull/3), [#4](https://github.com/Gfacello/SDF-Account-Status/pull/4), [#5](https://github.com/Gfacello/SDF-Account-Status/pull/5), [#6](https://github.com/Gfacello/SDF-Account-Status/pull/6), [#7](https://github.com/Gfacello/SDF-Account-Status/pull/7), [#8](https://github.com/Gfacello/SDF-Account-Status/pull/8) and [#9](https://github.com/Gfacello/SDF-Account-Status/pull/9). The integrated candidate is draft [PR #10](https://github.com/Gfacello/SDF-Account-Status/pull/10). The dependent release-preparation PR is being prepared, with its actual URL still pending; version/notes preparation does not finalize publication-date or live compatibility claims.
 
 ### Added
 
