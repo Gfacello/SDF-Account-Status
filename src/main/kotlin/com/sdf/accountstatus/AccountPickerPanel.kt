@@ -41,7 +41,8 @@ internal class AccountPickerPanel(
     onRetry: () -> Unit,
     private val onOpenProjectJson: () -> Unit,
     private val onRefresh: () -> Unit = onRetry,
-    private val onAccountContext: ((AccountPickerAccount, JComponent, Point) -> Unit)? = null
+    private val onAccountContext: ((AccountPickerAccount, JComponent, Point) -> Unit)? = null,
+    private val onAddAccount: (() -> Unit)? = null
 ) : JPanel(BorderLayout()) {
     val searchField = SearchTextField(false)
 
@@ -52,6 +53,7 @@ internal class AccountPickerPanel(
     private val stateLabel = JBLabel()
     private val retryLink = ActionLink("Retry") { refreshAccounts() }
     private val refreshButton = JButton("Refresh", AllIcons.Actions.Refresh)
+    private val addAccountButton = JButton("Add an account", AllIcons.General.Add)
     private val clearFiltersLink = ActionLink("Clear filters") {
         clearFilters()
         focusSearch()
@@ -66,6 +68,7 @@ internal class AccountPickerPanel(
     private var filterNotice: String? = null
     private var loading = true
     private var accountActivationInProgress = false
+    private var accountSetupInProgress = false
 
     init {
         preferredSize = JBUI.size(720, 360)
@@ -123,10 +126,22 @@ internal class AccountPickerPanel(
         refreshButton.mnemonic = KeyEvent.VK_R
         refreshButton.addActionListener { refreshAccounts() }
 
+        addAccountButton.toolTipText = "Open NetSuite Account Management to add an account"
+        addAccountButton.accessibleContext.accessibleName = "Add an account"
+        addAccountButton.mnemonic = KeyEvent.VK_A
+        addAccountButton.isVisible = onAddAccount != null
+        addAccountButton.addActionListener { onAddAccount?.invoke() }
+
+        val accountActions = JPanel(FlowLayout(FlowLayout.LEADING, JBUI.scale(6), 0)).apply {
+            isOpaque = false
+            add(refreshButton)
+            add(addAccountButton)
+        }
+
         val searchRow = JPanel(BorderLayout(JBUI.scale(6), 0)).apply {
             isOpaque = false
             add(searchField, BorderLayout.CENTER)
-            add(refreshButton, BorderLayout.EAST)
+            add(accountActions, BorderLayout.EAST)
         }
 
         val header = JPanel(BorderLayout()).apply {
@@ -224,15 +239,23 @@ internal class AccountPickerPanel(
         updateActionAvailability()
     }
 
+    fun setAccountSetupInProgress(inProgress: Boolean) {
+        accountSetupInProgress = inProgress
+        updateActionAvailability()
+    }
+
     private fun refreshAccounts() {
-        if (loading || accountActivationInProgress) return
+        if (loading || accountActivationInProgress || accountSetupInProgress) return
+        filterNotice = null
         // Disable repeat clicks before calling the controller, even if its loader starts later.
         showLoading()
         onRefresh()
     }
 
     private fun updateActionAvailability() {
-        val canRefresh = !loading && !accountActivationInProgress
+        val canChangeAccount = !accountActivationInProgress && !accountSetupInProgress
+        addAccountButton.isEnabled = canChangeAccount && onAddAccount != null
+        val canRefresh = !loading && canChangeAccount
         refreshButton.isEnabled = canRefresh
         retryLink.isEnabled = canRefresh
         val canChoose = canRefresh && fullModel != null
@@ -252,12 +275,12 @@ internal class AccountPickerPanel(
     fun restoreFilterState(state: AccountPickerFilterState) {
         val roles = fullModel?.availableRoles
         val roleRemoved = state.role != null && roles != null && state.role !in roles
-        filters = if (roleRemoved) state.copy(role = null) else state
-        filterNotice = if (roleRemoved) {
-            "Selected role is no longer available. Showing all roles."
-        } else {
-            null
+        if (roleRemoved) {
+            filterNotice = "Selected role is no longer available. Showing all roles."
+        } else if (state != filters) {
+            filterNotice = null
         }
+        filters = if (roleRemoved) state.copy(role = null) else state
         updatingFilterControls = true
         try {
             searchField.text = filters.query
@@ -276,7 +299,10 @@ internal class AccountPickerPanel(
         applyFilter()
     }
 
-    fun clearFilters() = restoreFilterState(AccountPickerFilterState())
+    fun clearFilters() {
+        filterNotice = null
+        restoreFilterState(AccountPickerFilterState())
+    }
 
     fun searchQuery(): String = filters.query
 
@@ -366,7 +392,8 @@ internal class AccountPickerPanel(
             }
 
             override fun mouseClicked(event: MouseEvent) {
-                if (event.button == MouseEvent.BUTTON1 && event.clickCount == 2) {
+                if (event.button == MouseEvent.BUTTON1 && event.clickCount == 2 &&
+                    !event.isPopupTrigger && !event.isControlDown) {
                     // The embedded tree owns disclosure clicks; double-click only activates leaves.
                     activateSelectedRow(toggleGroups = false)
                 }
@@ -393,7 +420,7 @@ internal class AccountPickerPanel(
     }
 
     private fun showSelectedAccountContext(point: Point) {
-        if (fullModel == null) return
+        if (fullModel == null || !treeTable.isEnabled) return
         val path = treeTable.tree.getPathForRow(treeTable.selectedRow) ?: return
         val node = path.lastPathComponent as? DefaultMutableTreeNode ?: return
         val account = (node.userObject as? PickerTreeValue.Account)?.model ?: return
