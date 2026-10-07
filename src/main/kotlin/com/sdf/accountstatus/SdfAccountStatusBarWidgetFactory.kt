@@ -1,10 +1,11 @@
 package com.sdf.accountstatus
 
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.command.WriteCommandAction
-import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.popup.JBPopup
@@ -12,7 +13,6 @@ import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.JBPopupListener
 import com.intellij.openapi.ui.popup.LightweightWindowEvent
 import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
@@ -26,29 +26,20 @@ import com.intellij.util.IconUtil
 import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
-import com.sdf.accountstatus.core.ProjectJsonUpdateResult
-import com.sdf.accountstatus.core.SdfAccountEnvironmentClassifier
 import com.sdf.accountstatus.core.SdfAccountStatusResolver
-import com.sdf.accountstatus.core.SdfAuthListLoadResult
-import com.sdf.accountstatus.core.SdfAuthentication
-import com.sdf.accountstatus.core.SdfProjectJsonParser
-import com.sdf.accountstatus.core.SdfProjectJsonUpdater
-import com.sdf.accountstatus.core.SuiteCloudAuthListLoader
-import com.sdf.accountstatus.domain.AccountEnvironment
+import com.sdf.accountstatus.core.SdfAccountStatusPresentation
 import com.sdf.accountstatus.domain.AccountWidgetState
 import com.sdf.accountstatus.domain.WidgetTone
 import java.awt.Color
 import java.awt.Cursor
+import java.awt.Point
 import java.awt.event.KeyAdapter
 import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
-import java.nio.file.Files
 import java.nio.file.Path
-import java.util.concurrent.Future
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
 import javax.swing.Icon
 import javax.swing.JComponent
 import javax.swing.SwingUtilities
@@ -83,10 +74,47 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
     private val projectJsonPath: Path? = project.basePath
         ?.let { Path.of(it, "project.json").toAbsolutePath().normalize() }
     private val resolver = SdfAccountStatusResolver(projectJsonPath)
-    private val accountLoader = SuiteCloudAuthListLoader()
+    private val projectJsonGateway = IntellijProjectJsonGateway(project, projectJsonPath)
+    private val preferences = service<SdfAccountPreferences>()
+    private val browserActions = AccountBrowserActions(project) { isDisposed || project.isDisposed }
+    private val stateController = AccountStateController(
+        provider = ConfiguredAccountProvider(preferences),
+        readProject = {
+            val snapshot = resolver.readSnapshot()
+            try {
+                projectJsonPath?.let { LocalFileSystem.getInstance().refreshAndFindFileByNioFile(it) }
+            } catch (cancelled: ProcessCanceledException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // A VFS refresh failure must not discard the already captured project status.
+            }
+            snapshot
+        },
+        scheduler = IntellijAccountWorkflowScheduler(),
+        isUnavailable = { isDisposed || project.isDisposed },
+        onStateChanged = { state ->
+            lastModifiedMillis = state.project.lastModifiedMillis
+            renderStatus(state)
+            accountPickerPanel?.let(::renderAccountListState)
+        }
+    )
+    private val controller = AccountWorkflowController(
+        writer = projectJsonGateway,
+        currentAuthenticationId = { stateController.state.currentAuthenticationId },
+        isUnavailable = { isDisposed || project.isDisposed },
+        later = { ApplicationManager.getApplication().invokeLater(it) },
+        onSaved = stateController::accountSaved
+    )
+    private val setupController = AccountSetupController(
+        isUnavailable = { isDisposed || project.isDisposed },
+        later = { ApplicationManager.getApplication().invokeLater(it) },
+        openSettings = { SuiteCloudAccountSetup.open(project) },
+        reloadAccounts = { loadAccountsInBackground(force = true) },
+        reopenPicker = { showAccountPicker(it) },
+        showError = { showPopupMessage(it) }
+    )
     private val connection = project.messageBus.connect(this)
-    private val refreshGeneration = AtomicInteger()
-    private val accountLoadGeneration = AtomicInteger()
+    private val preferencesConnection = ApplicationManager.getApplication().messageBus.connect(this)
     private val pollingTask: ScheduledFuture<*>
 
     @Volatile
@@ -95,29 +123,21 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
     @Volatile
     private var lastModifiedMillis: Long = Long.MIN_VALUE
 
-    @Volatile
-    private var refreshTask: Future<*>? = null
-
-    @Volatile
-    private var accountLoadTask: Future<*>? = null
-
-    @Volatile
-    private var knownAccountEnvironments: Map<String, AccountEnvironment> = emptyMap()
-
-    @Volatile
-    private var currentAuthenticationId: String? = null
-
-    @Volatile
-    private var projectJsonVirtualFile: VirtualFile? = null
-
-    @Volatile
-    private var accountListState: AccountListState = AccountListState.Loading
-
     private var accountPopup: JBPopup? = null
     private var accountPickerPanel: AccountPickerPanel? = null
 
     init {
         configureStatusLabel()
+        preferencesConnection.subscribe(AccountPreferencesListener.TOPIC, AccountPreferencesListener { change ->
+            onUiThread {
+                if (!isDisposed && !project.isDisposed) {
+                    when (change) {
+                        AccountPreferenceChange.PROVIDER -> stateController.loadAccounts(force = true)
+                        AccountPreferenceChange.DISPLAY_STYLE -> renderStatus(stateController.state)
+                    }
+                }
+            }
+        })
         refreshAsync()
         loadAccountsInBackground()
 
@@ -147,10 +167,8 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
 
     override fun dispose() {
         isDisposed = true
-        refreshGeneration.incrementAndGet()
-        accountLoadGeneration.incrementAndGet()
-        refreshTask?.cancel(true)
-        accountLoadTask?.cancel(true)
+        controller.dispose()
+        stateController.dispose()
         accountPopup?.let { popup ->
             val cancelPopup = Runnable {
                 if (!popup.isDisposed) popup.cancel()
@@ -162,6 +180,7 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
             }
         }
         pollingTask.cancel(true)
+        preferencesConnection.dispose()
         connection.dispose()
     }
 
@@ -170,18 +189,36 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
         label.border = JBUI.Borders.empty(0, 4)
         label.cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
         label.isFocusable = true
+        label.putClientProperty("html.disable", true)
         label.accessibleContext.accessibleName = "NetSuite SDF account status"
         label.accessibleContext.accessibleDescription =
             "Shows the current SDF authentication ID. Press Enter or Space to choose another account."
         label.addMouseListener(object : MouseAdapter() {
+            override fun mousePressed(event: MouseEvent) = showContextIfRequested(event)
+            override fun mouseReleased(event: MouseEvent) = showContextIfRequested(event)
+
+            private fun showContextIfRequested(event: MouseEvent) {
+                if (event.isPopupTrigger) {
+                    showStatusContextMenu(event.point)
+                    event.consume()
+                }
+            }
+
             override fun mouseClicked(event: MouseEvent) {
-                if (event.clickCount == 1 && SwingUtilities.isLeftMouseButton(event)) {
+                if (event.clickCount == 1 && SwingUtilities.isLeftMouseButton(event) &&
+                    !event.isPopupTrigger && !event.isControlDown) {
                     showAccountPicker()
                 }
             }
         })
         label.addKeyListener(object : KeyAdapter() {
             override fun keyPressed(event: KeyEvent) {
+                if (event.keyCode == KeyEvent.VK_CONTEXT_MENU ||
+                    event.keyCode == KeyEvent.VK_F10 && event.isShiftDown) {
+                    showStatusContextMenu(Point(0, label.height))
+                    event.consume()
+                    return
+                }
                 if (event.keyCode == KeyEvent.VK_ENTER || event.keyCode == KeyEvent.VK_SPACE) {
                     showAccountPicker()
                     event.consume()
@@ -190,7 +227,20 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
         })
     }
 
-    private fun showAccountPicker(restoredQuery: String = "") {
+    private fun showStatusContextMenu(point: Point) {
+        if (isDisposed || project.isDisposed) return
+        val target = BrowserAccountTarget.from(stateController.state.currentAuthentication)
+        val actions = browserActions.group { target }.apply {
+            addSeparator()
+            add(AccountStatusStyleActions(preferences) {}.group())
+            add(AccountProviderSettingsActions(project, preferences, { isDisposed || project.isDisposed }).group())
+        }
+        ActionManager.getInstance().createActionPopupMenu(
+            "SdfAccountStatus.Context", actions
+        ).component.show(label, point.x, point.y)
+    }
+
+    private fun showAccountPicker(restoredFilters: AccountPickerFilterState = AccountPickerFilterState()) {
         if (isDisposed || project.isDisposed) return
         val existingPopup = accountPopup
         if (existingPopup != null && existingPopup.isVisible && !existingPopup.isDisposed) return
@@ -199,13 +249,21 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
         lateinit var panel: AccountPickerPanel
         panel = AccountPickerPanel(
             onAccountChosen = { account -> handleAccountSelection(account, popup, panel) },
-            onRetry = {
-                panel.showLoading()
-                loadAccountsInBackground(force = true)
-            },
+            onRetry = { loadAccountsInBackground(force = true) },
             onOpenProjectJson = {
                 if (!popup.isDisposed) popup.cancel()
                 openProjectJson()
+            },
+            onAccountContext = { account, component, point ->
+                val target = BrowserAccountTarget.from(account.authentication)
+                ActionManager.getInstance().createActionPopupMenu(
+                    "SdfAccountPicker.Context", browserActions.group { target }
+                ).component.show(component, point.x, point.y)
+            },
+            onAddAccount = {
+                setupController.start(panel.filterState()) {
+                    if (!popup.isDisposed) popup.cancel()
+                }
             }
         )
 
@@ -235,61 +293,23 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
         accountPopup = popup
         accountPickerPanel = panel
         renderAccountListState(panel)
+        panel.restoreFilterState(restoredFilters)
         popup.show(JBPopupFactory.getInstance().guessBestPopupLocation(label))
         panel.focusSearch()
-        if (restoredQuery.isNotEmpty()) panel.restoreSearchQuery(restoredQuery)
     }
 
     private fun renderAccountListState(panel: AccountPickerPanel) {
-        when (val state = accountListState) {
+        when (val state = stateController.state.accountList) {
             AccountListState.Loading -> panel.showLoading()
             is AccountListState.Available -> panel.showAccounts(
-                AccountPickerModelBuilder.build(state.accounts, currentAuthenticationId)
+                AccountPickerModelBuilder.build(state.accounts, stateController.state.currentAuthenticationId)
             )
             is AccountListState.Unavailable -> panel.showUnavailable(state.message)
         }
     }
 
-    private fun loadAccountsInBackground(force: Boolean = false) {
-        if (isDisposed) return
-        val existing = accountLoadTask
-        if (!force && existing != null && !existing.isDone) return
-
-        existing?.cancel(true)
-        val generation = accountLoadGeneration.incrementAndGet()
-        accountListState = AccountListState.Loading
-        accountPickerPanel?.showLoading()
-
-        accountLoadTask = AppExecutorUtil.getAppExecutorService().submit {
-            val result = accountLoader.load()
-            if (isDisposed || generation != accountLoadGeneration.get()) return@submit
-
-            when (result) {
-                is SdfAuthListLoadResult.Available -> {
-                    val environments = result.accounts.associate { authentication ->
-                        authentication.authenticationId to (
-                            authentication.accountDetails?.accountId
-                                ?.let(SdfAccountEnvironmentClassifier::classifyAccountId)
-                                ?: AccountEnvironment.UNKNOWN
-                            )
-                    }
-                    knownAccountEnvironments = environments
-                    accountListState = AccountListState.Available(result.accounts)
-                }
-                is SdfAuthListLoadResult.Unavailable -> {
-                    knownAccountEnvironments = emptyMap()
-                    accountListState = AccountListState.Unavailable(result.message)
-                }
-            }
-
-            ApplicationManager.getApplication().invokeLater {
-                if (isDisposed || project.isDisposed || generation != accountLoadGeneration.get()) {
-                    return@invokeLater
-                }
-                accountPickerPanel?.let(::renderAccountListState)
-                refreshAsync()
-            }
-        }
+    private fun loadAccountsInBackground(force: Boolean = false) = onUiThread {
+        stateController.loadAccounts(force)
     }
 
     private fun handleAccountSelection(
@@ -297,122 +317,44 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
         popup: JBPopup,
         panel: AccountPickerPanel
     ) {
-        if (account.isCurrent || account.authentication.authenticationId == currentAuthenticationId) {
-            if (!popup.isDisposed) popup.cancel()
-            return
-        }
-
-        if (account.environment == AccountEnvironment.PRODUCTION) {
-            val query = panel.searchQuery()
-            if (!popup.isDisposed) popup.cancel()
-            ApplicationManager.getApplication().invokeLater {
-                if (project.isDisposed) return@invokeLater
-                val answer = Messages.showYesNoDialog(
-                    project,
-                    buildString {
-                        appendLine("Switch the default SDF account to production?")
-                        appendLine()
-                        appendLine("Authentication ID: ${account.authentication.authenticationId}")
-                        appendLine("Account: ${account.accountName} (${account.accountId})")
-                        append("Role: ${account.role}")
-                    },
-                    "Confirm Production Account",
-                    "Switch to Production",
-                    "Cancel",
-                    Messages.getWarningIcon()
-                )
-                if (isDisposed || project.isDisposed) return@invokeLater
-                if (answer == Messages.YES) {
-                    performAccountUpdate(account, popup = null, panel = null)
-                } else {
-                    showAccountPicker(restoredQuery = query)
-                }
-            }
-            return
-        }
-
-        performAccountUpdate(account, popup, panel)
-    }
-
-    private fun performAccountUpdate(
-        account: AccountPickerAccount,
-        popup: JBPopup?,
-        panel: AccountPickerPanel?
-    ) {
-        when (val update = updateProjectJson(account.authentication.authenticationId)) {
-            is ProjectJsonUpdateResult.Updated -> {
-                currentAuthenticationId = account.authentication.authenticationId
-                applyState(stateForSelectedAccount(account))
-                refreshAsync()
-                if (popup != null && !popup.isDisposed) popup.cancel()
-            }
-            is ProjectJsonUpdateResult.Invalid -> {
-                if (panel != null && popup != null && !popup.isDisposed) {
-                    panel.showOperationError(update.message)
-                } else {
-                    showPopupMessage(update.message)
-                }
-            }
-        }
-    }
-
-    private fun updateProjectJson(authenticationId: String): ProjectJsonUpdateResult {
-        val virtualFile = projectJsonVirtualFile
-            ?.takeIf { it.isValid }
-            ?: projectJsonPath?.let { LocalFileSystem.getInstance().findFileByNioFile(it) }
-            ?: return ProjectJsonUpdateResult.Invalid(
-                "project.json was not found. The account was not changed."
-            )
-        projectJsonVirtualFile = virtualFile
-        if (!virtualFile.isWritable) {
-            return ProjectJsonUpdateResult.Invalid(
-                "project.json is read-only. The account was not changed."
-            )
-        }
-
-        val documentManager = FileDocumentManager.getInstance()
-        val document = documentManager.getDocument(virtualFile)
-            ?: return ProjectJsonUpdateResult.Invalid(
-                "project.json could not be opened. The account was not changed."
-            )
-        val originalContent = document.text
-        val update = SdfProjectJsonUpdater.updateDefaultAuthId(originalContent, authenticationId)
-        if (update !is ProjectJsonUpdateResult.Updated) return update
-
-        return try {
-            WriteCommandAction.writeCommandAction(project)
-                .withName("Select NetSuite SDF Account")
-                .run<RuntimeException> {
-                    document.setText(update.content)
-                    documentManager.saveDocument(document)
-                }
-            if (documentManager.isDocumentUnsaved(document)) {
-                throw IllegalStateException("project.json was not saved")
-            }
-            update
-        } catch (_: Exception) {
-            if (document.text == update.content) {
-                runCatching {
-                    WriteCommandAction.writeCommandAction(project)
-                        .withName("Restore project.json")
-                        .run<RuntimeException> { document.setText(originalContent) }
-                }
-            }
-            ProjectJsonUpdateResult.Invalid(
-                "Unable to update project.json. The account was not changed."
-            )
+        panel.setAccountActivationInProgress(true)
+        try {
+            controller.selectAccount(account, AccountPickerSelectionUi(
+                panel = panel,
+                isPickerOpen = { !popup.isDisposed },
+                close = {
+                    if (!popup.isDisposed) popup.cancel()
+                },
+                confirm = { target ->
+                    Messages.showYesNoDialog(
+                        project,
+                        buildString {
+                            appendLine("Switch the default SDF account to production?")
+                            appendLine()
+                            appendLine("Authentication ID: ${target.authenticationId}")
+                            appendLine("Account: ${target.accountName} (${target.accountId})")
+                            append("Role: ${target.role}")
+                        },
+                        "Confirm Production Account",
+                        "Switch to Production",
+                        "Cancel",
+                        Messages.getWarningIcon()
+                    ) == Messages.YES
+                },
+                reopen = { showAccountPicker(it) },
+                showDetachedError = { showPopupMessage(it) }
+            ))
+        } finally {
+            if (!popup.isDisposed) panel.setAccountActivationInProgress(false)
         }
     }
 
     private fun openProjectJson() {
-        val virtualFile = projectJsonVirtualFile
-            ?.takeIf { it.isValid }
-            ?: projectJsonPath?.let { LocalFileSystem.getInstance().findFileByNioFile(it) }
+        val virtualFile = projectJsonGateway.findFile()
         if (virtualFile == null) {
             showPopupMessage("project.json was not found in this project.")
             return
         }
-        projectJsonVirtualFile = virtualFile
         FileEditorManager.getInstance(project).openFile(virtualFile, true)
     }
 
@@ -421,43 +363,11 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
         popup.show(JBPopupFactory.getInstance().guessBestPopupLocation(label))
     }
 
-    private fun refreshAsync() {
-        if (isDisposed) return
-        val generation = refreshGeneration.incrementAndGet()
-        refreshTask?.cancel(true)
-        refreshTask = AppExecutorUtil.getAppExecutorService().submit {
-            val state = resolver.resolve(knownAccountEnvironments)
-            val timestamp = resolver.getLastModifiedMillisOrMinusOne()
-            val authenticationId = readCurrentAuthenticationIdFromDisk()
-            val virtualFile = projectJsonPath?.let { path ->
-                runCatching {
-                    LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path)
-                }.getOrNull()
-            }
-            if (isDisposed || generation != refreshGeneration.get()) return@submit
+    private fun refreshAsync() = onUiThread { stateController.refreshProject() }
 
-            ApplicationManager.getApplication().invokeLater {
-                if (isDisposed || project.isDisposed || generation != refreshGeneration.get()) {
-                    return@invokeLater
-                }
-                lastModifiedMillis = timestamp
-                currentAuthenticationId = authenticationId
-                projectJsonVirtualFile = virtualFile
-                applyState(state)
-                val available = accountListState as? AccountListState.Available
-                if (available != null) {
-                    accountPickerPanel?.showAccounts(
-                        AccountPickerModelBuilder.build(available.accounts, authenticationId)
-                    )
-                }
-            }
-        }
-    }
-
-    private fun readCurrentAuthenticationIdFromDisk(): String? {
-        val path = projectJsonPath ?: return null
-        val content = runCatching { Files.readString(path) }.getOrNull() ?: return null
-        return SdfProjectJsonParser.parseDefaultAuthId(content)
+    private fun onUiThread(action: () -> Unit) {
+        if (ApplicationManager.getApplication().isDispatchThread) action()
+        else ApplicationManager.getApplication().invokeLater(action)
     }
 
     private fun pollProjectJsonChanges() {
@@ -466,22 +376,11 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
         if (newTimestamp != lastModifiedMillis) refreshAsync()
     }
 
-    private fun stateForSelectedAccount(account: AccountPickerAccount): AccountWidgetState {
-        val environment = account.environment
-        val tone = when (environment) {
-            AccountEnvironment.SANDBOX -> WidgetTone.OK
-            AccountEnvironment.PRODUCTION -> WidgetTone.ERROR
-            AccountEnvironment.RELEASE_PREVIEW,
-            AccountEnvironment.UNKNOWN -> WidgetTone.WARNING
-        }
-        val authenticationId = account.authentication.authenticationId
-        return AccountWidgetState(
-            text = authenticationId,
-            tooltip = "Current SDF default account ($authenticationId) - ${environment.label}. " +
-                "Click to choose an account",
-            tone = tone,
-            showCriticalIcon = environment == AccountEnvironment.PRODUCTION
-        )
+    private fun renderStatus(state: AccountWorkflowState) {
+        if (isDisposed || project.isDisposed) return
+        applyState(SdfAccountStatusPresentation.present(
+            state.project, state.currentAuthentication, preferences.displayStyle
+        ))
     }
 
     private fun applyState(state: AccountWidgetState) {
@@ -494,7 +393,7 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
         val updateLabel = Runnable {
             label.text = state.text
             label.toolTipText = state.tooltip
-            label.accessibleContext.accessibleDescription = state.tooltip
+            label.accessibleContext.accessibleDescription = state.accessibleDescription
             label.foreground = toneColor
             label.icon = if (state.showCriticalIcon) criticalIcon else null
             label.iconTextGap = 4
@@ -506,12 +405,6 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
         } else {
             ApplicationManager.getApplication().invokeLater(updateLabel)
         }
-    }
-
-    private sealed interface AccountListState {
-        data object Loading : AccountListState
-        data class Available(val accounts: List<SdfAuthentication>) : AccountListState
-        data class Unavailable(val message: String) : AccountListState
     }
 
     private companion object {

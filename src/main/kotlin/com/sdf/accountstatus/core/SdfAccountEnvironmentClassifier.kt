@@ -6,8 +6,8 @@ import java.util.Locale
 object SdfAccountEnvironmentClassifier {
     private val sandboxPattern = Regex("(^|[_-])SB\\d*($|[_-])")
     private val releasePreviewPattern = Regex("(^|[_-])RP($|[_-])")
-    private val sandboxAccountIdPattern = Regex(".+_SB\\d+$", RegexOption.IGNORE_CASE)
-    private val releasePreviewAccountIdPattern = Regex(".+_RP$", RegexOption.IGNORE_CASE)
+    private val sandboxAccountIdPattern = Regex(".+_SB\\d*$", RegexOption.IGNORE_CASE)
+    private val releasePreviewAccountIdPattern = Regex(".+_RP\\d*$", RegexOption.IGNORE_CASE)
     private val productionAccountIdPattern = Regex("\\d+")
 
     fun classify(account: String): AccountEnvironment {
