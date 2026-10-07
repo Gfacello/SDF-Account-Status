@@ -1,5 +1,10 @@
 # 0.3.0 candidate validation
 
+## October 7 handoff order
+
+On 2026-10-07 the user authorized PR consolidation and merge to `main`, followed by a ZIP and `v0.3.0` tag, then their manual testing. The remaining manual/live boxes below remain open; they do not block that authorized local-testing handoff. Public GitHub and Marketplace publication remain separate. The October 5 branch/PR statuses below are historical checkpoints. Record final merged-revision CI, ZIP checksum and signing status in the GitHub release draft so evidence can identify the exact tagged commit without another source commit.
+
+
 Updated 2026-10-05. Release-preparation source: `chore/release-0.3.0` at `c280bddb8d9ee4b44aa06f76a550d5813397e35d`, in the durable `.worktrees/candidate` checkout. Subsequent observed release head `3eba7aa` changes documentation only; draft [PR #11](https://github.com/Gfacello/SDF-Account-Status/pull/11) targets `feature/0.3.0-candidate`. The local source gate and checksum below remain associated with `c280bdd`, not a new run of the documentation commit. The inspected artifact is version `0.3.0`, an unpublished candidate awaiting full manual/live validation and review. The latest observed PR #11 CI passed for head `3eba7aa`; documentation updates require fresh CI observation before approval, without carrying forward an earlier revision’s result. Changelog/Marketplace notes describe the candidate; the changelog deliberately remains **Unreleased candidate**, with preparation date 2026-10-05 rather than a publication date. Scope and completion criteria remain in [PLAN-0.3.0.md](PLAN-0.3.0.md) and [GOAL-0.3.0.md](GOAL-0.3.0.md).
 
 ## Automated evidence

@@ -6,7 +6,7 @@ This checklist produces a reviewable, versioned NetSuite SDF Account Status dist
 
 - `main` contains integrated, tested code for the next release. Make feature and refactor changes on short-lived branches and merge them through reviewed PRs.
 - Use `chore/release-<version>` for the final version and release-documentation PR. For 0.3.0, use `chore/release-0.3.0`.
-- A `v<version>` tag identifies the exact released commit. Keep published tags immutable.
+- A `v<version>` tag identifies the exact versioned commit. Keep published tags immutable. Tagging a build for local acceptance testing does not imply Marketplace publication or completion of manual checks.
 - Create a separate `release/<version>` stabilization branch only if later-version development must continue before the release ships. Add push CI coverage for that branch and carry stabilization fixes back to `main`.
 - A permanent `develop` branch is not part of this workflow.
 
@@ -103,14 +103,14 @@ Then sign and verify:
 
 Review the signed archive under `build/distributions/`, smoke-test that final ZIP, and record its SHA-256 and source commit. Preserve those exact bytes for publication. Do not publish the unsigned ZIP when a signed artifact is available.
 
-When the release is authorized, create a signed tag on the recorded SHA and push only that release tag:
+When tagging is authorized, prefer a signed annotated tag if a signing identity is configured. Create it on the recorded SHA and push only that release tag:
 
 ```bash
 git tag -s v<version> <release-commit-sha> -m "NetSuite SDF Account Status v<version>"
 git push origin v<version>
 ```
 
-If signed Git tags are not configured, establish and document the project's accepted tag-signing policy before releasing. Do not silently replace an existing release tag.
+For the 0.3.0 local-testing handoff authorized on 2026-10-07, no Git signing identity is configured. The accepted repository policy permits an annotated unsigned tag (`git tag -a`) for this handoff, recording the exact source SHA and ZIP checksum in the draft GitHub release. The existing `v0.2.0` tag is also unsigned. This exception does not waive artifact signing for Marketplace publication. Prefer signed tags once an identity is configured; never replace an existing release tag.
 
 ## 6. Publish
 
