@@ -1,14 +1,14 @@
 # Goal: prepare NetSuite SDF Account Status 0.3.0 for release
 
-Status: awaiting the dedicated test setup and completion of the remaining native UI checks. On 2026-10-05 the committed branches were recovered into the durable `.worktrees/candidate` checkout and integrated on `feature/0.3.0-candidate`. The release-preparation branch `chore/release-0.3.0` now sets version `0.3.0`; source `c280bdd` passed the complete local automated gate and versioned ZIP inspection. Latest observed release head `3eba7aa` adds documentation only since `c280bdd`, and draft [PR #11](https://github.com/Gfacello/SDF-Account-Status/pull/11) targets `feature/0.3.0-candidate`. PR #11 CI passed all three jobs for head `3eba7aa`. The install/load and missing/invalid-project recovery row is complete in both supported IDE versions; remaining manual/live validation, final CI observation after subsequent documentation changes and the review handoff remain outstanding. Candidate notes retain an Unreleased heading; no publication date is finalized. Nothing in this checklist authorizes publication, a release tag, or merging the release-preparation PR.
+Status (2026-10-07): the user now authorizes consolidating the PRs and merging all selected 0.3.0 work into `main`, then generating a fresh ZIP and creating `v0.3.0` for their local testing. Merge #11 into `feature/0.3.0-candidate` first, then #10 into `main`; close #3–#9 as superseded after verifying their inclusion. The final merge, build, tag and unpublished GitHub release draft still need authoritative evidence. Manual IDE and live compatibility checks remain open for testing after delivery; Marketplace and public GitHub publication are not authorized.
 
 ## Objective and completion
 
-Prepare a reviewable 0.3.0 release candidate following [PLAN-0.3.0.md](PLAN-0.3.0.md). Include Refresh, Richer status bar, Open in NetSuite, Environment and role filters, all four selected refactors, their regression tests, and corrected error-reporting documentation.
+Consolidate and merge the 0.3.0 PRs, build the local testing ZIP and create the release tag following [PLAN-0.3.0.md](PLAN-0.3.0.md). Include Refresh, Richer status bar, Open in NetSuite, Environment and role filters, all four selected refactors, their regression tests, and corrected error-reporting documentation.
 
-Resolve Node.js CLI migration and Add an account compatibility. The candidate now implements Node as the default provider, explicit legacy Java selection, and Oracle Account Management setup, but those implementations do not replace the live compatibility gate. Obtain an explicit scope decision if migration or Add an account cannot be demonstrated; do not silently remove either feature.
+Keep the implemented Node.js CLI migration and Add an account flow in the testing build. Node is the default provider, with explicit legacy Java selection and Oracle Account Management setup. Live compatibility remains unverified and must be checked during user testing before publication; do not silently remove either feature.
 
-The goal is complete only when the agreed implementation, documentation, passing validation evidence, recorded manual verification, focused reviewable PRs and a release-preparation PR are ready. Publishing, pushing a release tag, and merging the release-preparation PR are later actions requiring authorization. See [RELEASING.md](RELEASING.md).
+The current goal is complete when the selected work and release preparation are merged into `main`, superseded PRs are closed, final automated checks pass, a ZIP built from the verified final revision is delivered with its checksum, and immutable `v0.3.0` points to that revision. Prepare an unpublished GitHub release draft for the testing artifact. The user will then perform manual testing; record pending manual/live checks explicitly and do not count them as passed. Public release and Marketplace publication remain later actions requiring authorization. See [RELEASING.md](RELEASING.md).
 
 Evidence, exact revisions and unchecked manual scenarios are recorded in [VALIDATION-0.3.0.md](VALIDATION-0.3.0.md). Test counts from different branches overlap and are not additive.
 
@@ -17,7 +17,8 @@ Evidence, exact revisions and unchecked manual scenarios are recorded in [VALIDA
 - Keep `main` as the integration branch, with focused short-lived `research/...`, `refactor/...`, `feature/...` and `docs/...` PRs. Dependent branches are acceptable while prerequisites are under review.
 - Use `feature/0.3.0-candidate` to assemble and validate the combined work. The candidate branch is not a published version or proof that its component PRs have been approved or merged.
 - Use `chore/release-0.3.0` for the final version, changelog, Marketplace notes and release-preparation PR.
-- Tag the final approved, validated `main` commit as immutable `v0.3.0` only when release authorization is given. Do not create the tag during feature development.
+- Merge #11 into the candidate before merging #10 into `main`. Close the fully included PRs #3–#9 as superseded.
+- The October 7 instruction authorizes the immutable `v0.3.0` tag after the final `main` automated checks and ZIP inspection, before the user's manual testing. Follow the release guide's signing policy and never move an existing tag.
 - Introduce `release/0.3.0` only if later-version work needs to proceed while 0.3.0 stabilizes; add its push CI coverage and carry fixes back to `main` if used.
 - Preserve other ongoing work; do not reset shared checkouts, rewrite shared history or move existing release tags.
 
@@ -29,7 +30,9 @@ The initial 2026-09-21 planning snapshot had `main`, `origin/main` and `v0.2.0` 
 
 The temporary `/private/tmp` implementation checkouts subsequently disappeared. Committed work was recovered from the retained branches into `.worktrees/candidate`; integration and review fixes now live on `feature/0.3.0-candidate`. The original prototype branch remains preserved. This recovery does not claim that missing uncommitted temporary files were recovered byte-for-byte.
 
-## Execution checklist
+## Implementation and validation record
+
+The entries below preserve completed implementation and revision-specific evidence from the earlier review phase. Unchecked manual/live items remain open for post-delivery testing under the October 7 order; historical draft references do not require keeping superseded PRs open.
 
 ### 1. Preserve work and establish the baseline
 
@@ -94,7 +97,7 @@ Implementation and automated coverage are complete for the following items; manu
 - [x] Rich status supports persisted display styles, exact-identity metadata, truncation, full tooltips/accessibility and unavailable metadata fallback.
 - [x] Open in NetSuite uses validated local account URLs, correct current/selected-row targets and a browser controller without account-switching capability.
 - [x] Adapt the preserved Add an account prototype to the Oracle settings/controller flow and cover its controller/picker behavior automatically.
-- [ ] Pass Add an account's live end-to-end gate before final release inclusion, or obtain an explicit scope decision.
+- [ ] Pass Add an account's live end-to-end gate during testing before publication, or obtain an explicit scope decision if it fails.
 - [x] Correct reporting wording in README, security/architecture docs and both plugin-description sources: IDE preferences control manual/automatic exception submissions.
 
 Review: [PR #5 refresh/filters](https://github.com/Gfacello/SDF-Account-Status/pull/5), [PR #6 browser actions](https://github.com/Gfacello/SDF-Account-Status/pull/6), [PR #7 rich status](https://github.com/Gfacello/SDF-Account-Status/pull/7), [PR #9 reporting](https://github.com/Gfacello/SDF-Account-Status/pull/9). All are drafts. Add Account integration and cross-feature wiring are on the candidate branch.
@@ -110,23 +113,28 @@ Review: [PR #5 refresh/filters](https://github.com/Gfacello/SDF-Account-Status/p
 - [x] Complete the install/load and missing/invalid-project recovery row in both IDE versions. Native 2026.1 showed missing-file and malformed-JSON states, then recovered to the restored production/Developer baseline. Native 2026.2 showed the same recovery sequence using synthetic `project262`, after a fresh session and Trust Project acceptance for that fixture only. External default edits in 262 also demonstrated the same account changing from Developer to Administrator and back.
 - [ ] Complete the remaining supported-IDE manual matrix in [VALIDATION-0.3.0.md](VALIDATION-0.3.0.md), including actual widget lifecycle/multiple projects and provider changes during a load. Native 2026.1 demonstrated specific synthetic picker/filter/refresh and production Cancel/Confirm interactions. The 261 refresh row is also complete, including error/retry and vanished-role/current-account handling. Remaining compound rows stay open as recorded in the validation matrix. Input has been intermittent: raising the main 261 window allowed one picker session, but later picker/context actions again had no visible effect. Licensing readiness is unconfirmed.
 - [ ] Record live provider/setup observations, sanitized configuration and any remaining limitations.
-- [ ] Complete required PR reviews before integration into `main`; draft PR creation alone does not satisfy review requirements.
+- [ ] Resolve review findings and required checks before the authorized integration into `main`.
 
 Required gate: `./gradlew clean test buildPlugin verifyPluginProjectConfiguration verifyPluginStructure verifyPlugin`.
 
-### 8. Prepare the release review
+### 8. Consolidate, merge and deliver the testing build
 
-Branch: `chore/release-0.3.0`, source/artifact gate at `c280bdd` and subsequent documentation-only head `3eba7aa`. Draft [PR #11](https://github.com/Gfacello/SDF-Account-Status/pull/11) targets `feature/0.3.0-candidate`; the integrated candidate review is draft [PR #10](https://github.com/Gfacello/SDF-Account-Status/pull/10), targeting `main`. Neither PR has been merged.
+Merge path: [PR #11](https://github.com/Gfacello/SDF-Account-Status/pull/11), `chore/release-0.3.0` → `feature/0.3.0-candidate`, then [PR #10](https://github.com/Gfacello/SDF-Account-Status/pull/10) → `main`. Earlier source/artifact evidence is at `c280bdd`; final merge and artifact evidence must be recorded separately.
 
 - [x] Set version `0.3.0` and prepare candidate changelog/Marketplace notes with preparation date 2026-10-05.
-- [ ] Finalize publication-date notes and provider/setup inclusion only after manual/live gates and review; the changelog currently remains **Unreleased candidate**.
+- [x] Date the 0.3.0 preparation notes 2026-10-07 and explicitly retain pending manual/live validation and unpublished Marketplace status.
 - [x] Align candidate provider prerequisites, local configuration, setup instructions and privacy documentation with the implementation; live compatibility limits remain explicit.
 - [x] Pass the complete local gate on release-preparation source `c280bdd`: 215 tests in 29 suites, zero failures/errors/skips, all 20 tasks executed in 33 seconds, both configured WebStorm verifier verdicts Compatible.
 - [x] Record passing remote CI for release PR #11 head `3eba7aa`; the workflow artifact was built from its GitHub merge revision, as recorded in the validation document.
 - [ ] Observe fresh CI after documentation updates before approval.
 - [x] Create and attach draft [release-preparation PR #11](https://github.com/Gfacello/SDF-Account-Status/pull/11), targeting the candidate branch, with revision-specific evidence and unresolved gates.
-- [x] Prepare [RELEASE-0.3.0.md](RELEASE-0.3.0.md) with the post-merge checklist: final-main CI, clean checkout, signed ZIP, checksum, exact tag target and publication steps still requiring authorization.
-- [ ] Present the candidate and remaining release actions for review without merging the release-preparation PR, pushing a release tag or publishing.
+- [x] Update [RELEASE-0.3.0.md](RELEASE-0.3.0.md) for the authorized merge → ZIP → tag → user testing order; public publication remains separate.
+- [ ] Verify PRs #3–#9 are included, resolve findings, merge #11 then #10, and close superseded PRs.
+- [ ] Verify final `main` CI and run the full automated gate from a clean checkout of the merged revision.
+- [ ] Inspect and deliver the fresh ZIP with source revision, checksum and signing status.
+- [ ] Create and push immutable `v0.3.0` at that verified revision under the release guide's signing policy.
+- [ ] Prepare an unpublished GitHub release draft with the exact testing ZIP and pending-test notes.
+- [ ] Hand off the remaining manual/live checks and local installation instructions to the user.
 
 ## Progress tracking
 

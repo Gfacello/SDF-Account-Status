@@ -4,9 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.3.0] - Unreleased candidate
+## [0.3.0] - 2026-10-07
 
-Prepared for review on 2026-10-05. Manual IDE and live Node/Oracle Account Management compatibility checks remain required before release; see [the validation record](docs/VALIDATION-0.3.0.md). The publication date and final inclusion of the provider/setup flow remain subject to those gates.
+Prepared for local testing. The user requested PR consolidation and merge to `main`, followed by a fresh ZIP and the `v0.3.0` tag before their manual testing. Manual IDE and live Node/Oracle Account Management compatibility checks remain pending; see [the validation record](docs/VALIDATION-0.3.0.md). This date identifies the 0.3.0 preparation; it does not claim completed testing or Marketplace publication.
 
 ### Added
 
