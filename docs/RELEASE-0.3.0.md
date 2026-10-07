@@ -1,41 +1,29 @@
-# 0.3.0 merge, package and local testing
+# 0.3.0 release preparation
 
-Updated 2026-10-07. The user explicitly requested that the PRs be consolidated and merged into `main`, then a fresh ZIP and `v0.3.0` tag be prepared for their local testing. This order supersedes the earlier review-only pause. Manual IDE and live NetSuite checks remain open in [VALIDATION-0.3.0.md](VALIDATION-0.3.0.md); they have not been waived or recorded as passing. Marketplace publication and a public GitHub release remain outside the current authorization.
+Updated 2026-10-07. The user reported that the local test works after the account-loading fix at `caeb04b` and explicitly requested that the fix ship in **0.3.0**, not 0.3.1. The authorized next steps are to push the fix, complete its PR and merge into `main`, then publish the actual GitHub `v0.3.0` release. This supersedes the earlier draft-only handoff and review pause. Final merge, artifact and publication evidence remains to be recorded.
 
-## Consolidation plan
+## Accepted fix and validation
 
-- `feature/0.3.0-candidate`: integrated implementation, [PR #10](https://github.com/Gfacello/SDF-Account-Status/pull/10), targeting `main`.
-- `chore/release-0.3.0`: dependent version/Marketplace description/changelog/release-documentation changes, [PR #11](https://github.com/Gfacello/SDF-Account-Status/pull/11), targeting `feature/0.3.0-candidate`. Merge #11 into the candidate first, then merge #10 into `main`.
-- Confirm that PRs #3–#9 are fully included in #10, then close them as superseded. Preserve their review and validation history.
+The fix shows account-loading progress and reduces discovery delay. The development build containing it was labelled `0.3.1-dev.1`; that was a testing label, not the intended release version. Its local automated gate passed **229 tests across 29 suites**, with zero failures, errors or skips, and Plugin Verifier reported Compatible for WebStorm `261.22158.274` and `262.8665.259`. The log is `/private/tmp/sdf-account-loading-feedback-validation.log`. These results identify the development build; the final 0.3.0 artifact needs its own version, checksum and revision record.
 
-The release branch sets artifact version `0.3.0`; it does not establish readiness to publish. Keep every selected feature in the merged testing build. If subsequent manual or live checks find defects, fix them and update the notes and evidence; do not silently remove the provider or setup flow.
+The user's successful local test is acceptance evidence for the loading fix. It does not establish that every manual scenario or live Node/Oracle identity and Add Account check has been exercised. Keep the remaining boxes open in [VALIDATION-0.3.0.md](VALIDATION-0.3.0.md), preserve all selected features, and describe those limits accurately in the release notes.
 
-## Recorded validation before consolidation
+## Final release checklist
 
-Release source `c280bdd` passed the local full gate and 0.3.0 ZIP inspection; latest observed release head `3eba7aa` adds documentation only since that source gate. The inspected source/artifact checksum and test counts are in [VALIDATION-0.3.0.md](VALIDATION-0.3.0.md).
+- [ ] Push the loading fix and 0.3.0 release preparation, resolve PR findings and required checks, and merge the fix into `main`.
+- [ ] Record the exact final `main` revision and successful CI for that revision.
+- [ ] Build the final **0.3.0** ZIP from that revision, complete the automated gate in [RELEASING.md](RELEASING.md), and inspect the packaged plugin descriptor and contents.
+- [ ] Record the ZIP filename, SHA-256, source revision and signing status; use those exact bytes for the release asset.
+- [ ] Update the early `v0.3.0` tag from `17f8cc5` to the verified final merged revision under the user's instruction to include this fix in the still-unpublished 0.3.0 release. Record both targets and verify the remote tag. This is an explicit correction of the prepublication tag; subsequent published tags remain immutable.
+- [ ] Publish the GitHub release for that final `v0.3.0` target, replacing the prior draft/testing artifact with the verified 0.3.0 ZIP and accurate release notes.
+- [ ] Verify the published release state, tag target and downloadable asset checksum, then provide the release link and installation ZIP to the user.
 
-Integrated candidate [PR #10 CI run 37353758331](https://github.com/Gfacello/SDF-Account-Status/actions/runs/37353758331) passed all three jobs for head `6787477`: Ubuntu full verification plus macOS/Windows synthetic CLI tests. The PR workflow artifact uses merge revision `65537f21db98553b9cb2c7ad88d1f44801effdea`, not the head SHA. The latest observed release [PR #11 run 37360084211](https://github.com/Gfacello/SDF-Account-Status/actions/runs/37360084211) passed all three jobs for head `3eba7aa`, with artifact merge revision `0690daec031e3f7f149214e0751f1bbcc9cca944`. Subsequent documentation updates require fresh CI observation before approval. Remaining manual/live gates and review completion remain open.
+These are pending actions, not claims that the fix has already merged, the tag has moved or the release has been published. Follow [RELEASING.md](RELEASING.md) for signing and publication requirements. No Marketplace publication is claimed here.
 
-Native WebStorm 2026.1 demonstrated specific synthetic search/filter, refresh retention, missing-Oracle guidance and production Cancel/Confirm interactions, including disk-default preservation/update checks. It also showed missing-file and malformed-JSON states, then recovery to the restored production/Developer baseline. A fresh native WebStorm 2026.2 session, with Trust Project accepted only for synthetic `project262`, demonstrated missing-file and malformed-JSON states followed by recovery to the restored valid baseline. External default edits changed the same account's role from Developer to Administrator and back. The install/load and missing/invalid-project recovery row is complete in both IDE versions; the 261 combined-filter/cancel and refresh rows are also complete. The external-edit/exact-role portion of the 262 status row is observed. Remaining compound rows stay open in the validation matrix. Input has been intermittent; raising the main 261 window allowed one picker session, but later picker/context actions again had no visible effect. Licensing readiness is unconfirmed. See the individual observations in the validation record.
+## Remaining validation coverage
 
-## Authorized merge and test-artifact checklist
-
-- [ ] Recheck PR contents, review findings and CI; resolve confirmed defects and required checks.
-- [ ] Merge PR #11 into `feature/0.3.0-candidate`, then PR #10 into `main`; close #3–#9 as superseded once their inclusion is verified.
-- [ ] Record the exact final `main` SHA and successful CI for that revision.
-- [ ] Build from a clean checkout of that SHA, run the complete automated gate in [RELEASING.md](RELEASING.md), and inspect the resulting 0.3.0 ZIP.
-- [ ] Record the ZIP filename, SHA-256, source revision and signing status, then provide the exact artifact for local installation.
-- [ ] Create and push the immutable `v0.3.0` tag at that same verified `main` revision, following the signing policy in the release guide. Never move an existing release tag.
-- [ ] Prepare a draft GitHub release with the same ZIP and accurate notes stating that manual/live testing is pending. Keep it unpublished.
-- [ ] Hand the ZIP and remaining checks to the user for testing.
-
-These entries describe the requested next actions. They do not claim that consolidation, the final build, tagging or draft creation has already happened.
-
-## Testing and later publication
-
-- [ ] Complete the remaining WebStorm 2026.1 and 2026.2 manual matrix; the install/load and missing/invalid-project recovery row is already verified in both versions.
+- [ ] Complete the remaining WebStorm 2026.1 and 2026.2 manual matrix; prior observed checks remain scoped to their recorded builds.
 - [ ] Demonstrate dedicated-account Node/legacy/Oracle identity and role parity, Add Account completion/cancellation, and unchanged project defaults.
-- [ ] Record the user's local test results against the supplied ZIP and preserve any unresolved limitations.
-- [ ] Resolve findings and validate any changed artifact before requesting publication authorization. If fixes are required after tagging, use a new version/tag rather than moving `v0.3.0`.
+- [ ] Record further test results against the final 0.3.0 ZIP and resolve any confirmed defects without silently removing features.
 
-After testing and separate publication authorization, follow [RELEASING.md](RELEASING.md) for protected signing, signature verification, Marketplace submission and the public GitHub release. The final signed artifact and publication checks must be recorded independently of the local testing ZIP. No Marketplace publication is claimed by this document.
+Earlier candidate gates, PR review history, checksums and native IDE observations remain in the validation record. They are historical evidence and must not be presented as new runs against the final release revision.

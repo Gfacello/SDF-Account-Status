@@ -4,15 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Improved
-
-- Show an indeterminate discovery bar followed by completed/total account-detail progress while loading the picker.
-- Load Node CLI account details two at a time while preserving list order, cancellation and the overall timeout.
-- Convert unexpected provider exceptions into safe, retryable errors instead of leaving the picker loading.
-
 ## [0.3.0] - 2026-10-07
 
-Prepared for local testing. The user requested PR consolidation and merge to `main`, followed by a fresh ZIP and the `v0.3.0` tag before their manual testing. Manual IDE and live Node/Oracle Account Management compatibility checks remain pending; see [the validation record](docs/VALIDATION-0.3.0.md). This date identifies the 0.3.0 preparation; it does not claim completed testing or Marketplace publication.
+The account-loading fix was accepted in local testing and is included in 0.3.0. See [the validation record](docs/VALIDATION-0.3.0.md) for automated checks, observed manual tests and remaining coverage limitations.
 
 ### Added
 
@@ -26,6 +20,9 @@ Prepared for local testing. The user requested PR consolidation and merge to `ma
 
 ### Improved
 
+- Show an indeterminate discovery bar followed by completed/total account-detail progress while loading the picker.
+- Load Node CLI account details two at a time while preserving list order, cancellation and the overall timeout.
+- Convert unexpected provider exceptions into safe, retryable errors instead of leaving the picker loading.
 - Separate account workflow and document persistence, read a single project snapshot, publish coherent account state on the UI thread, and share status formatting.
 - Preserve complete filters after cancelled production confirmation and verify that the requested default survives document save listeners.
 - Reject stale or disposed background work and keep provider path filesystem checks off the UI thread.
