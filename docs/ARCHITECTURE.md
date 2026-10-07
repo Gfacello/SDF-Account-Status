@@ -53,7 +53,7 @@ Interfaces separate selection, scheduling, persistence, browser and setup effect
 
 - UI mutations and state publication run on the EDT. Project-file reads, CLI discovery, subprocess execution and parsing run on the application executor.
 - Account and project loads have separate generations. Cancelling or superseding a worker is not enough by itself: the delivery callback also checks its generation and widget/project disposal before changing state.
-- Node commands have a 30-second per-process and 120-second whole-refresh budget. Each command receives the remaining refresh budget. Output is bounded at 1 MiB per stream and decoded strictly as UTF-8; stdin is closed. Cleanup terminates the launcher and observed descendants and closes/cancels readers.
+- Node commands have a 30-second per-process and 120-second whole-refresh budget. Detail lookups run at most two at a time, retain the listed order, and report completed/total progress on the UI thread. Each command receives the remaining refresh budget. Output is bounded at 1 MiB per stream and decoded strictly as UTF-8; stdin is closed. Cleanup terminates the launcher and observed descendants and closes/cancels readers.
 - Widget disposal cancels background work and polling, disposes project/application message-bus connections, and closes the popup on the UI thread.
 - Closing a picker alone retains a useful in-flight account load. Reopening reads current workflow state.
 - Account records are retained in memory. Raw CLI output is not persisted by the plugin.

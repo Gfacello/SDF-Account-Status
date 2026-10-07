@@ -1,9 +1,14 @@
 # 0.3.0 candidate validation
 
-## October 7 handoff order
+## Current acceptance and publication order — October 7
 
-On 2026-10-07 the user authorized PR consolidation and merge to `main`, followed by a ZIP and `v0.3.0` tag, then their manual testing. The remaining manual/live boxes below remain open; they do not block that authorized local-testing handoff. Public GitHub and Marketplace publication remain separate. The October 5 branch/PR statuses below are historical checkpoints. Record final merged-revision CI, ZIP checksum and signing status in the GitHub release draft so evidence can identify the exact tagged commit without another source commit.
+After the account-loading fix at `caeb04b`, the user reported that the local test works. They explicitly requested that this fix belong to **0.3.0**, not 0.3.1, and authorized pushing the fix, completing its PR, merging into `main` and publishing the actual GitHub `v0.3.0` release. This supersedes the earlier draft-only handoff and review-pause instructions. The early, previously unpublished `v0.3.0` tag points to `17f8cc5`; the final release is to retarget that tag to the verified merged revision under this explicit version instruction. Record the final tag target, CI, ZIP checksum and signing status in the published release evidence. This document does not claim that the new merge, retag or publication has already happened.
 
+The local development gate for the loading fix passed **229 tests in 29 suites**, with zero failures, errors or skips. Both WebStorm verifiers reported Compatible. That build was temporarily labelled `0.3.1-dev.1`; it is evidence for the tested fix, not a final 0.3.0 packaging result. The user's successful local test accepts the reported loading behavior, but does not establish completion of the entire manual matrix or all live provider/setup checks below. Their unobserved boxes remain open.
+
+## Earlier preparation snapshot — October 5
+
+The paragraph and candidate evidence below describe the October 5 state, including its then-current branch/draft statuses and changelog wording. They are retained as history; the October 7 instruction above controls the current release order.
 
 Updated 2026-10-05. Release-preparation source: `chore/release-0.3.0` at `c280bddb8d9ee4b44aa06f76a550d5813397e35d`, in the durable `.worktrees/candidate` checkout. Subsequent observed release head `3eba7aa` changes documentation only; draft [PR #11](https://github.com/Gfacello/SDF-Account-Status/pull/11) targets `feature/0.3.0-candidate`. The local source gate and checksum below remain associated with `c280bdd`, not a new run of the documentation commit. The inspected artifact is version `0.3.0`, an unpublished candidate awaiting full manual/live validation and review. The latest observed PR #11 CI passed for head `3eba7aa`; documentation updates require fresh CI observation before approval, without carrying forward an earlier revision’s result. Changelog/Marketplace notes describe the candidate; the changelog deliberately remains **Unreleased candidate**, with preparation date 2026-10-05 rather than a publication date. Scope and completion criteria remain in [PLAN-0.3.0.md](PLAN-0.3.0.md) and [GOAL-0.3.0.md](GOAL-0.3.0.md).
 
@@ -11,6 +16,8 @@ Updated 2026-10-05. Release-preparation source: `chore/release-0.3.0` at `c280bd
 
 | Revision/date | Evidence | Result and scope |
 | --- | --- | --- |
+| `caeb04b`, 2026-10-07 | Local loading-fix development gate on macOS; `/private/tmp/sdf-account-loading-feedback-validation.log` and `build/test-results/test/TEST-*.xml` | Passed: 229 tests in 29 suites; zero failures, errors or skips; BUILD SUCCESSFUL in 41 seconds. Artifact version was `0.3.1-dev.1`, to be finalized as 0.3.0 under the user's instruction |
+| `caeb04b`, 2026-10-07 | Development Plugin Verifier results under `build/reports/pluginVerifier/` | Compatible with WebStorm `261.22158.274` and `262.8665.259`; results apply to the `0.3.1-dev.1` development artifact |
 | PR #11 head `3eba7aa`, 2026-10-05 | [GitHub Actions run 37360084211](https://github.com/Gfacello/SDF-Account-Status/actions/runs/37360084211) | Success for all three jobs: Ubuntu full gate, macOS and Windows synthetic CLI tests. Workflow artifact merge revision: `0690daec031e3f7f149214e0751f1bbcc9cca944` |
 | PR #11 head `ca819ac`, 2026-10-05 | [GitHub Actions run 37356754447](https://github.com/Gfacello/SDF-Account-Status/actions/runs/37356754447) | Success for all three jobs: Ubuntu full gate, macOS and Windows synthetic CLI tests. Workflow artifact merge revision: `ff77d6e8b9adb74465ac92ea99d980a747fa9bc6` |
 | PR #11 head `bdc9c00`, 2026-10-05 | [GitHub Actions run 37355038442](https://github.com/Gfacello/SDF-Account-Status/actions/runs/37355038442) | Success for all three jobs: Ubuntu full gate (3m 52s), macOS and Windows synthetic CLI tests; total run 5m 0s. Workflow artifact merge revision: `b40d0f80a4a62c672ab9dab2ad8107a80e846e1f` |
@@ -48,7 +55,7 @@ Local evidence locations, relative to the candidate checkout unless shown as abs
 - Prior combined gate log: `/private/tmp/sdf-030-candidate-gate.log`.
 - Focused local CLI log: `/private/tmp/sdf-030-cli-platforms-tests.log`.
 
-Current inspected **0.3.0** ZIP from `c280bdd`, SHA-256:
+Historical inspected **0.3.0** candidate ZIP from `c280bdd`, SHA-256:
 
 ```text
 3b56bc27be448c54e61833474b77197133e6c7c6e0984b7be628d5b908d40320
@@ -60,13 +67,17 @@ Historical **0.2.0-labelled** development ZIP from `8543334`, SHA-256:
 367c6d0e3636440bde864117cf3fa65e1592345afbaccb7d81539878d63c929c
 ```
 
-These are distinct artifacts; the historical checksum is not the release-preparation ZIP checksum.
+These are distinct historical artifacts. Neither checksum identifies the final 0.3.0 artifact containing the loading fix; record that new checksum with the final release.
 
 Generated results and temporary logs are not committed and may be replaced by later runs. This record retains their observed result and exact revision; record new revision-specific evidence when preparing the versioned release artifact.
 
 The integrated suite covers workflow/gateway persistence, real IntelliJ document and EDT behavior, snapshot/load races, filters/refresh and production-cancel restoration, browser targeting/URL validation, rich presentation/local preferences, provider selection and settings, setup-controller effects, and bounded synthetic subprocess execution. Automated component coverage does not prove the complete manual scenarios below.
 
 ## Manual IDE matrix — incomplete
+
+### User acceptance of the loading fix — October 7
+
+The user reported that their local test works after receiving the build containing `caeb04b` and approved including the fix in 0.3.0. No exact IDE build, OS, account/provider inventory or scenario-by-scenario report accompanied this acceptance. It therefore records successful local testing of the reported loading issue without marking any unobserved compound matrix row as passed.
 
 ### Partial manual observations
 
@@ -150,13 +161,13 @@ The user volunteered a dedicated non-customer test setup; the authentication ID 
 - [ ] Add a dedicated identity through the button, return to the picker, and verify it is visible to the selected provider.
 - [ ] Verify completion and cancellation both preserve the project's previous default and unrelated contents; select the new default separately, with production confirmation when applicable.
 - [ ] Exercise the real Node/Java process tree and runtime discovery from supported IDE launch environments; synthetic subprocess execution is insufficient for this claim.
-- [ ] If these gates cannot be demonstrated, obtain an explicit user scope decision before changing release inclusion or calling the goal complete.
+- [ ] Keep any unverified live behavior documented and obtain an explicit scope decision before removing or changing a selected feature. The user has authorized the release after local acceptance; that authorization does not convert these unobserved checks into passing results.
 
 Research provenance and detailed output/process limits are in [NODE-CLI-COMPATIBILITY.md](NODE-CLI-COMPATIBILITY.md).
 
-## Review and release-preparation status
+## Historical review and release-preparation status — October 5
 
-Focused draft PRs are available and attached to the task:
+The following records the earlier draft-review state and preparation checklist; it does not assert current PR states or override the October 7 merge/publication instruction. Focused draft PRs were created and attached to the task:
 
 | PR | Scope |
 | --- | --- |
@@ -170,13 +181,13 @@ Focused draft PRs are available and attached to the task:
 | [#10](https://github.com/Gfacello/SDF-Account-Status/pull/10) | Integrated candidate targeting `main` |
 | [#11](https://github.com/Gfacello/SDF-Account-Status/pull/11) | Release preparation targeting `feature/0.3.0-candidate` |
 
-All are drafts; creation is not approval or merging. Integrated Add Account/provider configuration and review fixes are on the candidate branch. Dependent draft release-preparation [PR #11](https://github.com/Gfacello/SDF-Account-Status/pull/11) has been created and attached; the latest observed CI for `3eba7aa` passed. Its PR description previously recorded the `ca819ac` CI result and verified 261 interactions. Fresh CI observation after documentation updates and review completion remain pending. Earlier committed implementation branches were pushed; the candidate worktree is durable after the temporary checkouts disappeared.
+At that checkpoint all were drafts; creation alone did not establish approval or merging. Integrated Add Account/provider configuration and review fixes are on the candidate branch. Dependent draft release-preparation [PR #11](https://github.com/Gfacello/SDF-Account-Status/pull/11) has been created and attached; the latest observed CI for `3eba7aa` passed. Its PR description previously recorded the `ca819ac` CI result and verified 261 interactions. Fresh CI observation after documentation updates and review completion remain pending. Earlier committed implementation branches were pushed; the candidate worktree is durable after the temporary checkouts disappeared.
 
 - [x] Create `chore/release-0.3.0`, set version `0.3.0`, and prepare candidate changelog/Marketplace notes at `c280bdd`.
 - [x] Pass the complete local gate for `c280bdd`, inspect its versioned ZIP and record its checksum.
 - [x] Prepare the [post-merge release checklist](RELEASE-0.3.0.md), including final-main CI, clean checkout, signing, checksum, immutable tag and publication actions.
 - [x] Record passing release PR #11 CI for head `3eba7aa` and its workflow merge revision `0690daec031e3f7f149214e0751f1bbcc9cca944`.
 - [ ] Observe fresh CI after documentation updates before approval; do not carry a previous run's success onto an unobserved revision.
-- [ ] Complete manual/live evidence and resolve review findings; only then finalize publication-date notes and verified provider/setup inclusion.
+- [ ] Complete the outstanding manual/live evidence and record verified provider/setup behavior. The current publication order is stated at the top of this document; pending checks must remain explicit.
 - [x] Create and attach draft [release-preparation PR #11](https://github.com/Gfacello/SDF-Account-Status/pull/11), targeting the candidate branch. Its creation does not complete the remaining review/live/manual gates.
-- [ ] Hand off the reviewable candidate. Do not merge the release-preparation PR, push a release tag or publish Marketplace/GitHub releases without subsequent authorization.
+- [x] Record subsequent user authorization on October 7 to merge the loading fix, include it in 0.3.0 and publish the GitHub release; final execution evidence remains pending in the [release checklist](RELEASE-0.3.0.md).

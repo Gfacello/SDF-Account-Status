@@ -1,16 +1,57 @@
 package com.sdf.accountstatus
 
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.sdf.accountstatus.core.ProjectJsonSnapshot
 import com.sdf.accountstatus.core.SdfAuthListLoadResult
 import com.sdf.accountstatus.core.SdfAuthentication
 import com.sdf.accountstatus.domain.AccountEnvironment
 import com.sdf.accountstatus.domain.WidgetTone
+import java.util.concurrent.CancellationException
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class AccountStateControllerTest {
+    @Test
+    fun `progress waits for UI delivery and cannot overwrite completed refreshed or disposed state`() {
+        val scheduler = ControlledScheduler()
+        scheduler.deferLater = true
+        val callbacks = mutableListOf<(AccountLoadingProgress) -> Unit>()
+        val provider = object : AccountProvider {
+            override fun load() = available("current", "123_SB1")
+            override fun load(onProgress: (AccountLoadingProgress) -> Unit): SdfAuthListLoadResult {
+                callbacks += onProgress
+                onProgress(AccountLoadingProgress(0, 73))
+                return load()
+            }
+        }
+        val controller = AccountStateController(provider, { ProjectJsonSnapshot.configured("current") }, scheduler, { false }, {})
+        controller.loadAccounts()
+        scheduler.runWorker(0)
+        assertEquals(null, assertIs<AccountListState.Loading>(controller.state.accountList).progress)
+        scheduler.deliverLater()
+        assertEquals(AccountLoadingProgress(0, 73), assertIs<AccountListState.Loading>(controller.state.accountList).progress)
+
+        callbacks[0](AccountLoadingProgress(12, 73))
+        controller.loadAccounts(force = true)
+        scheduler.deliverLater()
+        assertEquals(null, assertIs<AccountListState.Loading>(controller.state.accountList).progress)
+        scheduler.runWorker(1)
+        scheduler.deliver(1)
+        scheduler.deliverLater()
+        assertIs<AccountListState.Available>(controller.state.accountList)
+
+        controller.loadAccounts(force = true)
+        scheduler.runWorker(2)
+        controller.dispose()
+        scheduler.deliverLater()
+        assertEquals(null, assertIs<AccountListState.Loading>(controller.state.accountList).progress)
+    }
+
     @Test
     fun `older account completion delivered last cannot replace newer accounts or presentation`() {
         val fixture = Fixture()
@@ -67,6 +108,83 @@ class AccountStateControllerTest {
         fixture.result = available("current", "123_SB1")
         fixture.scheduler.finish(3)
         assertEquals(WidgetTone.OK, fixture.controller.state.presentation.tone)
+    }
+
+    @Test
+    fun `unexpected provider failure leaves loading with a safe message and permits ordinary retry`() {
+        val fixture = Fixture()
+        fixture.loadProject("current")
+        fixture.failure = IllegalStateException("private authentication detail")
+        fixture.controller.loadAccounts()
+        fixture.scheduler.runWorker(1)
+        assertIs<AccountListState.Loading>(fixture.controller.state.accountList)
+        fixture.scheduler.deliver(1)
+        val unavailable = assertIs<AccountListState.Unavailable>(fixture.controller.state.accountList)
+        assertFalse(unavailable.message.contains("private authentication detail"))
+        assertTrue(unavailable.message.contains("Refresh"))
+        assertEquals("current", fixture.controller.state.currentAuthenticationId)
+
+        fixture.failure = null
+        fixture.result = available("current", "123_SB1")
+        fixture.controller.loadAccounts()
+        assertEquals(3, fixture.scheduler.jobs.size)
+        fixture.scheduler.finish(2)
+        assertIs<AccountListState.Available>(fixture.controller.state.accountList)
+        assertEquals("123_SB1", fixture.controller.state.currentAuthentication?.accountDetails?.accountId)
+    }
+
+    @Test
+    fun `late failed provider cannot replace the accounts from a newer request`() {
+        val fixture = Fixture()
+        fixture.failure = IllegalArgumentException("private authentication detail")
+        fixture.controller.loadAccounts()
+        fixture.scheduler.runWorker(0)
+        fixture.controller.loadAccounts(force = true)
+        fixture.failure = null
+        fixture.result = available("current", "123_SB2")
+        fixture.scheduler.finish(1)
+        val publicationCount = fixture.published.size
+        fixture.scheduler.deliver(0)
+        val accounts = assertIs<AccountListState.Available>(fixture.controller.state.accountList)
+        assertEquals("123_SB2", accounts.accounts.single().accountDetails?.accountId)
+        assertEquals(publicationCount, fixture.published.size)
+    }
+
+    @Test
+    fun `provider cancellation is not converted into an account error`() {
+        for (cancelled in listOf(ProcessCanceledException(), CancellationException())) {
+            val fixture = Fixture()
+            fixture.failure = cancelled
+            fixture.controller.loadAccounts()
+            assertSame(cancelled, assertFailsWith<RuntimeException> { fixture.scheduler.runWorker(0) })
+            assertIs<AccountListState.Loading>(fixture.controller.state.accountList)
+            assertEquals(1, fixture.published.size)
+        }
+    }
+
+    @Test
+    fun `provider interruption preserves the thread interruption flag`() {
+        val fixture = Fixture()
+        val interrupted = InterruptedException()
+        fixture.failure = interrupted
+        fixture.controller.loadAccounts()
+        try {
+            assertSame(interrupted, assertFailsWith<InterruptedException> { fixture.scheduler.runWorker(0) })
+            assertTrue(Thread.currentThread().isInterrupted)
+            assertEquals(1, fixture.published.size)
+        } finally {
+            Thread.interrupted()
+        }
+    }
+
+    @Test
+    fun `JVM errors are not converted into an account error`() {
+        val fixture = Fixture()
+        val error = OutOfMemoryError("synthetic JVM error")
+        fixture.failure = error
+        fixture.controller.loadAccounts()
+        assertSame(error, assertFailsWith<OutOfMemoryError> { fixture.scheduler.runWorker(0) })
+        assertEquals(1, fixture.published.size)
     }
 
     @Test
@@ -184,9 +302,12 @@ class AccountStateControllerTest {
         val scheduler = ControlledScheduler()
         var unavailable = false
         var result: SdfAuthListLoadResult = available("current", "123")
+        var failure: Throwable? = null
         var snapshot = ProjectJsonSnapshot.configured("current", 1)
         val published = mutableListOf<AccountWorkflowState>()
-        val controller = AccountStateController({ result }, { snapshot }, scheduler, { unavailable }, published::add)
+        val controller = AccountStateController(
+            { failure?.let { throw it }; result }, { snapshot }, scheduler, { unavailable }, published::add
+        )
         fun loadProject(id: String) {
             snapshot = ProjectJsonSnapshot.configured(id, 1)
             controller.refreshProject()
@@ -197,7 +318,16 @@ class AccountStateControllerTest {
     private class ControlledScheduler : AccountWorkflowScheduler {
         class Job(val work: () -> Unit, val deliver: () -> Unit, var cancelled: Boolean = false)
         val jobs = mutableListOf<Job>()
-        override fun later(action: () -> Unit) = action()
+        var deferLater = false
+        private val laterActions = mutableListOf<() -> Unit>()
+        override fun later(action: () -> Unit) {
+            if (deferLater) laterActions.add(action) else action()
+        }
+        fun deliverLater() {
+            val actions = laterActions.toList()
+            laterActions.clear()
+            actions.forEach { it() }
+        }
         override fun <T> background(work: () -> T, completed: (T) -> Unit): AccountWorkflowTask {
             var result: Any? = null
             val job = Job({ result = work() }, { @Suppress("UNCHECKED_CAST") completed(result as T) })

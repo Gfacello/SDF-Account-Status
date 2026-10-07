@@ -1,18 +1,27 @@
 package com.sdf.accountstatus
 
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.sdf.accountstatus.core.ProjectJsonSnapshot
 import com.sdf.accountstatus.core.SdfAccountStatusPresentation
 import com.sdf.accountstatus.core.SdfAuthListLoadResult
 import com.sdf.accountstatus.core.SdfAuthentication
 import com.sdf.accountstatus.domain.AccountWidgetState
 import com.sdf.accountstatus.domain.WidgetTone
+import java.util.concurrent.CancellationException
 
 internal fun interface AccountProvider {
     fun load(): SdfAuthListLoadResult
+    fun load(onProgress: (AccountLoadingProgress) -> Unit): SdfAuthListLoadResult = load()
+}
+
+internal data class AccountLoadingProgress(val completed: Int, val total: Int) {
+    init {
+        require(total > 0 && completed in 0..total)
+    }
 }
 
 internal sealed interface AccountListState {
-    data object Loading : AccountListState
+    data class Loading(val progress: AccountLoadingProgress? = null) : AccountListState
     data class Available(val accounts: List<SdfAuthentication>) : AccountListState
     data class Unavailable(val message: String) : AccountListState
 }
@@ -21,7 +30,7 @@ internal data class AccountWorkflowState(
     val project: ProjectJsonSnapshot = ProjectJsonSnapshot(
         null, AccountWidgetState("Reading project.json…", "Reading project.json", WidgetTone.WARNING), Long.MIN_VALUE
     ),
-    val accountList: AccountListState = AccountListState.Loading
+    val accountList: AccountListState = AccountListState.Loading()
 ) {
     val currentAuthenticationId: String? get() = project.authenticationId
     val currentAuthentication: SdfAuthentication? get() =
@@ -55,8 +64,16 @@ internal class AccountStateController(
         val generation = ++accountGeneration
         accountTask?.cancel()
         loadingAccounts = true
-        publish(state.copy(accountList = AccountListState.Loading))
-        accountTask = scheduler.background(provider::load) { result ->
+        publish(state.copy(accountList = AccountListState.Loading()))
+        accountTask = scheduler.background({
+            loadAccountsSafely { progress ->
+                scheduler.later {
+                    if (!unavailable() && generation == accountGeneration && loadingAccounts) {
+                        publish(state.copy(accountList = AccountListState.Loading(progress)))
+                    }
+                }
+            }
+        }) { result ->
             if (unavailable() || generation != accountGeneration) return@background
             loadingAccounts = false
             val accounts = when (result) {
@@ -94,6 +111,22 @@ internal class AccountStateController(
         disposed = true
         accountTask?.cancel()
         projectTask?.cancel()
+    }
+
+    private fun loadAccountsSafely(onProgress: (AccountLoadingProgress) -> Unit): SdfAuthListLoadResult = try {
+        provider.load(onProgress)
+    } catch (cancelled: ProcessCanceledException) {
+        throw cancelled
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (interrupted: InterruptedException) {
+        Thread.currentThread().interrupt()
+        throw interrupted
+    } catch (_: Exception) {
+        // A failed worker must still deliver a result so the picker can leave Loading and retry.
+        SdfAuthListLoadResult.Unavailable(
+            "Unable to read SuiteCloud accounts. Check Account provider settings and try Refresh again."
+        )
     }
 
     private fun unavailable(): Boolean = disposed || isUnavailable()

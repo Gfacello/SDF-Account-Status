@@ -61,6 +61,8 @@ intellijPlatform {
         changeNotes = """
             <p><b>Version 0.3.0</b></p>
             <ul>
+              <li>Show account-loading progress with completed and total counts</li>
+              <li>Load account details two at a time and recover from provider errors with retry guidance</li>
               <li>Refresh accounts in place and combine environment, role, and text filters</li>
               <li>Choose a persistent detailed status display with complete account tooltips</li>
               <li>Open an account in NetSuite through a locally configured account URL</li>
