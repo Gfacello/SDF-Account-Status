@@ -110,7 +110,9 @@ git tag -s v<version> <release-commit-sha> -m "NetSuite SDF Account Status v<ver
 git push origin v<version>
 ```
 
-For the 0.3.0 local-testing handoff authorized on 2026-10-07, no Git signing identity is configured. The accepted repository policy permits an annotated unsigned tag (`git tag -a`) for this handoff, recording the exact source SHA and ZIP checksum in the draft GitHub release. The existing `v0.2.0` tag is also unsigned. This exception does not waive artifact signing for Marketplace publication. Prefer signed tags once an identity is configured; never replace an existing release tag.
+For the 0.3.0 local-testing handoff authorized on 2026-10-07, no Git signing identity is configured. The accepted repository policy permits an annotated unsigned tag (`git tag -a`) for this handoff, recording the exact source SHA and ZIP checksum in the draft GitHub release. The existing `v0.2.0` tag is also unsigned. This exception does not waive artifact signing for Marketplace publication. Prefer signed tags once an identity is configured.
+
+On 2026-10-07, the user accepted the loading fix and explicitly requested that it ship as 0.3.0 instead of 0.3.1. The early `v0.3.0` local-testing tag at `17f8cc5` had no published GitHub release. This one-time correction replaces that testing tag with the final verified merge commit before the first public 0.3.0 release. Preserve the old tag object locally, verify the remote tag still matches the expected testing tag, and use a lease for the replacement. Once the public release is published, `v0.3.0` is immutable. The GitHub ZIP may be distributed unsigned with an explicit signing-status note; Marketplace signing and upload must be recorded separately.
 
 ## 6. Publish
 

@@ -1,6 +1,6 @@
 # Goal: prepare NetSuite SDF Account Status 0.3.0 for release
 
-Status (2026-10-07): the user now authorizes consolidating the PRs and merging all selected 0.3.0 work into `main`, then generating a fresh ZIP and creating `v0.3.0` for their local testing. Merge #11 into `feature/0.3.0-candidate` first, then #10 into `main`; close #3–#9 as superseded after verifying their inclusion. The final merge, build, tag and unpublished GitHub release draft still need authoritative evidence. Manual IDE and live compatibility checks remain open for testing after delivery; Marketplace and public GitHub publication are not authorized.
+Status (2026-10-07): PRs #3–#11 are included in `main` at `17f8cc5`, the early testing ZIP/tag was delivered, and the superseded PRs are closed. The user accepted the account-loading fix at `caeb04b` and now explicitly requests pushing it, opening and merging a PR, and publishing the corrected build as **0.3.0**. This supersedes the earlier publication pause. Final merge, CI, artifact, corrected tag and public-release results must be verified; the detailed manual/live matrix retains its unobserved cases.
 
 ## Objective and completion
 
@@ -8,7 +8,7 @@ Consolidate and merge the 0.3.0 PRs, build the local testing ZIP and create the 
 
 Keep the implemented Node.js CLI migration and Add an account flow in the testing build. Node is the default provider, with explicit legacy Java selection and Oracle Account Management setup. Live compatibility remains unverified and must be checked during user testing before publication; do not silently remove either feature.
 
-The current goal is complete when the selected work and release preparation are merged into `main`, superseded PRs are closed, final automated checks pass, a ZIP built from the verified final revision is delivered with its checksum, and immutable `v0.3.0` points to that revision. Prepare an unpublished GitHub release draft for the testing artifact. The user will then perform manual testing; record pending manual/live checks explicitly and do not count them as passed. Public release and Marketplace publication remain later actions requiring authorization. See [RELEASING.md](RELEASING.md).
+The current goal is complete when the selected work and release preparation are merged into `main`, superseded PRs are closed, final automated checks pass, a ZIP built from the verified final revision is delivered with its checksum, and immutable `v0.3.0` points to that revision. Publish the corrected GitHub release after the final checks. The user has accepted the local loading fix; record other pending manual/live checks explicitly and do not count them as passed. The user has now authorized public release; execution and any publishing prerequisites remain recorded in the current release handoff. See [RELEASING.md](RELEASING.md).
 
 Evidence, exact revisions and unchecked manual scenarios are recorded in [VALIDATION-0.3.0.md](VALIDATION-0.3.0.md). Test counts from different branches overlap and are not additive.
 
@@ -18,9 +18,9 @@ Evidence, exact revisions and unchecked manual scenarios are recorded in [VALIDA
 - Use `feature/0.3.0-candidate` to assemble and validate the combined work. The candidate branch is not a published version or proof that its component PRs have been approved or merged.
 - Use `chore/release-0.3.0` for the final version, changelog, Marketplace notes and release-preparation PR.
 - Merge #11 into the candidate before merging #10 into `main`. Close the fully included PRs #3–#9 as superseded.
-- The October 7 instruction authorizes the immutable `v0.3.0` tag after the final `main` automated checks and ZIP inspection, before the user's manual testing. Follow the release guide's signing policy and never move an existing tag.
+- The October 7 instruction authorizes the immutable `v0.3.0` tag after the final `main` automated checks and ZIP inspection, before the user's manual testing. Follow the release guide's signing policy with the subsequently authorized correction of the early testing tag described in [RELEASING.md](RELEASING.md).
 - Introduce `release/0.3.0` only if later-version work needs to proceed while 0.3.0 stabilizes; add its push CI coverage and carry fixes back to `main` if used.
-- Preserve other ongoing work; do not reset shared checkouts, rewrite shared history or move existing release tags.
+- Preserve other ongoing work; do not reset shared checkouts, rewrite shared history or move published release tags. The one-time early 0.3.0 testing-tag correction is recorded in the release guide.
 
 This follows [GitHub flow](https://docs.github.com/en/get-started/using-github/github-flow). CI runs on PRs and `main`/`master` pushes. Its artifact upload runs even after a failed job, so an uploaded ZIP is not a passing verification result.
 
