@@ -52,7 +52,7 @@ class AccountProviderSettingsControllerTest {
 
         val provider = ConfiguredAccountProvider(
             fixture.preferences,
-            loadNode = { error("An invalid explicit path must not launch Node") },
+            loadNode = { _, _ -> error("An invalid explicit path must not launch Node") },
             loadLegacy = { error("An invalid explicit path must not fall back to Java") }
         )
         val result = assertIs<SdfAuthListLoadResult.Unavailable>(provider.load())
