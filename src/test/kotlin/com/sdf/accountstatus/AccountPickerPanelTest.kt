@@ -21,6 +21,7 @@ import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.KeyStroke
 import javax.swing.JPanel
+import javax.swing.JProgressBar
 import javax.swing.SwingUtilities
 import javax.swing.tree.DefaultMutableTreeNode
 import org.junit.jupiter.api.AfterEach
@@ -49,6 +50,50 @@ class AccountPickerPanelTest {
         val footer = openAction.parent as JPanel
 
         assertEquals(BorderLayout.EAST, (footer.layout as BorderLayout).getConstraints(openAction))
+    }
+
+    @Test
+    fun `loading bar changes from discovery to counted progress and disappears on success`() = onEdt {
+        val panel = AccountPickerPanel({}, {}, {})
+        val bar = panel.descendants().filterIsInstance<JProgressBar>().single()
+        assertTrue(bar.isVisible)
+        assertTrue(bar.isIndeterminate)
+        assertEquals("Finding accounts…", bar.string)
+
+        panel.showLoading(AccountLoadingProgress(12, 73))
+        assertFalse(bar.isIndeterminate)
+        assertEquals(73, bar.maximum)
+        assertEquals(12, bar.value)
+        assertEquals("12 / 73", bar.string)
+        assertEquals("Loading account details: 12 of 73", panel.status().text)
+        assertEquals(panel.status().text, bar.accessibleContext.accessibleDescription)
+        assertFalse(panel.refreshButton().isEnabled)
+
+        panel.showLoading(AccountLoadingProgress(73, 73))
+        assertEquals(73, bar.value)
+        panel.showAccounts(model())
+        assertFalse(bar.isVisible)
+        assertFalse(bar.isIndeterminate)
+        assertTrue(panel.refreshButton().isEnabled)
+    }
+
+    @Test
+    fun `loading failure hides progress and retry resets count without losing filters`() = onEdt {
+        val panel = AccountPickerPanel({}, {}, {})
+        val bar = panel.descendants().filterIsInstance<JProgressBar>().single()
+        panel.showAccounts(model())
+        val filters = AccountPickerFilterState("acme", AccountEnvironment.SANDBOX, "Developer")
+        panel.restoreFilterState(filters)
+        panel.showLoading(AccountLoadingProgress(12, 73))
+        panel.showUnavailable("Unable to load accounts")
+        assertFalse(bar.isVisible)
+        assertTrue(panel.link("Retry").isVisible)
+        panel.link("Retry").doClick()
+        assertTrue(bar.isVisible)
+        assertTrue(bar.isIndeterminate)
+        assertEquals(0, bar.value)
+        assertEquals(filters, panel.filterState())
+        panel.showUnavailable("Finished test")
     }
 
     @Test

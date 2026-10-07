@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "com.sdf"
-version = "0.3.0"
+version = "0.3.1-dev.1"
 
 repositories {
     mavenCentral()
@@ -59,6 +59,12 @@ intellijPlatform {
         """.trimIndent()
 
         changeNotes = """
+            <p><b>Development build 0.3.1-dev.1</b></p>
+            <ul>
+              <li>Show an account-loading progress bar with completed and total account counts</li>
+              <li>Load account details two at a time to reduce discovery delays</li>
+              <li>Recover from unexpected account-provider errors with retry guidance</li>
+            </ul>
             <p><b>Version 0.3.0</b></p>
             <ul>
               <li>Refresh accounts in place and combine environment, role, and text filters</li>

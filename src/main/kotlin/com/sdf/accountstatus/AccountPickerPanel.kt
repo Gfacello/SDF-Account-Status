@@ -27,6 +27,7 @@ import javax.swing.DefaultComboBoxModel
 import javax.swing.JComboBox
 import javax.swing.JButton
 import javax.swing.JPanel
+import javax.swing.JProgressBar
 import javax.swing.JComponent
 import javax.swing.ListSelectionModel
 import javax.swing.tree.DefaultMutableTreeNode
@@ -51,6 +52,10 @@ internal class AccountPickerPanel(
     private val treeTable = TreeTable(treeModel)
     private val warningLabel = JBLabel()
     private val stateLabel = JBLabel()
+    private val loadingProgressBar = JProgressBar().apply {
+        accessibleContext.accessibleName = "Account loading progress"
+        isStringPainted = true
+    }
     private val retryLink = ActionLink("Retry") { refreshAccounts() }
     private val refreshButton = JButton("Refresh", AllIcons.Actions.Refresh)
     private val addAccountButton = JButton("Add an account", AllIcons.General.Add)
@@ -179,19 +184,24 @@ internal class AccountPickerPanel(
         }
 
         add(header, BorderLayout.NORTH)
-        add(JBScrollPane(treeTable), BorderLayout.CENTER)
+        add(JPanel(BorderLayout(0, JBUI.scale(6))).apply {
+            isOpaque = false
+            add(JBScrollPane(treeTable), BorderLayout.CENTER)
+            add(loadingProgressBar, BorderLayout.SOUTH)
+        }, BorderLayout.CENTER)
         add(footer, BorderLayout.SOUTH)
         showLoading()
     }
 
-    fun showLoading() {
+    fun showLoading(progress: AccountLoadingProgress? = null) {
         loading = true
         fullModel = null
         updateActionAvailability()
         warningLabel.isVisible = false
         retryLink.isVisible = false
         clearFiltersLink.isVisible = false
-        stateLabel.text = "Reading SuiteCloud accounts…"
+        stateLabel.text = progress?.let { "Loading account details: ${it.completed} of ${it.total}" }
+            ?: "Reading SuiteCloud accounts…"
         stateLabel.toolTipText = null
         stateLabel.accessibleContext.accessibleDescription = stateLabel.text
         val currentRoot = treeModel.root as? DefaultMutableTreeNode
@@ -200,7 +210,14 @@ internal class AccountPickerPanel(
         } else {
             treeTable.clearSelection()
         }
-        treeTable.emptyText.text = "Reading SuiteCloud authentication IDs…"
+        treeTable.emptyText.text = if (progress == null) "Finding SuiteCloud authentication IDs…"
+            else "Loading account details…"
+        loadingProgressBar.isVisible = true
+        loadingProgressBar.isIndeterminate = progress == null
+        loadingProgressBar.maximum = progress?.total ?: 1
+        loadingProgressBar.value = progress?.completed ?: 0
+        loadingProgressBar.string = progress?.let { "${it.completed} / ${it.total}" } ?: "Finding accounts…"
+        loadingProgressBar.accessibleContext.accessibleDescription = stateLabel.text
         setBusy(true)
     }
 
@@ -209,6 +226,7 @@ internal class AccountPickerPanel(
         fullModel = model
         updateActionAvailability()
         retryLink.isVisible = false
+        hideLoadingProgress()
         setBusy(false)
         restoreFilterState(filters)
     }
@@ -219,6 +237,7 @@ internal class AccountPickerPanel(
         updateActionAvailability()
         warningLabel.isVisible = false
         clearFiltersLink.isVisible = false
+        hideLoadingProgress()
         setBusy(false)
         retryLink.isVisible = canRetry
         stateLabel.text = message
@@ -231,6 +250,11 @@ internal class AccountPickerPanel(
     fun showOperationError(message: String) {
         stateLabel.text = message
         stateLabel.accessibleContext.accessibleDescription = message
+    }
+
+    private fun hideLoadingProgress() {
+        loadingProgressBar.isIndeterminate = false
+        loadingProgressBar.isVisible = false
     }
 
     /** The controller holds this state through confirmation and persistence, including async work. */

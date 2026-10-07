@@ -300,7 +300,7 @@ private class SdfAccountStatusBarWidget(private val project: Project) : CustomSt
 
     private fun renderAccountListState(panel: AccountPickerPanel) {
         when (val state = stateController.state.accountList) {
-            AccountListState.Loading -> panel.showLoading()
+            is AccountListState.Loading -> panel.showLoading(state.progress)
             is AccountListState.Available -> panel.showAccounts(
                 AccountPickerModelBuilder.build(state.accounts, stateController.state.currentAuthenticationId)
             )

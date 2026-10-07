@@ -9,10 +9,12 @@ import java.nio.file.Path
 /** Each request uses exactly one provider. Failure never triggers a second authentication store. */
 internal class ConfiguredAccountProvider(
     private val preferences: SdfAccountPreferences,
-    private val loadNode: (AccountProviderConfiguration) -> SdfAuthListLoadResult = ::loadNodeAccounts,
+    private val loadNode: (AccountProviderConfiguration, (AccountLoadingProgress) -> Unit) -> SdfAuthListLoadResult = ::loadNodeAccounts,
     private val loadLegacy: () -> SdfAuthListLoadResult = { SuiteCloudAuthListLoader().load() }
 ) : AccountProvider {
-    override fun load(): SdfAuthListLoadResult {
+    override fun load(): SdfAuthListLoadResult = load {}
+
+    override fun load(onProgress: (AccountLoadingProgress) -> Unit): SdfAuthListLoadResult {
         val configuration = preferences.providerConfiguration.normalized()
         val validationError = configuration.validationError()
         if (validationError != null) {
@@ -21,7 +23,7 @@ internal class ConfiguredAccountProvider(
             )
         }
         return when (val result = when (configuration.provider) {
-            AccountProviderKind.NODE_CLI -> loadNode(configuration)
+            AccountProviderKind.NODE_CLI -> loadNode(configuration, onProgress)
             AccountProviderKind.LEGACY_JAVA -> loadLegacy()
         }) {
             is SdfAuthListLoadResult.Available -> result
@@ -32,10 +34,13 @@ internal class ConfiguredAccountProvider(
     }
 }
 
-private fun loadNodeAccounts(configuration: AccountProviderConfiguration): SdfAuthListLoadResult =
+private fun loadNodeAccounts(
+    configuration: AccountProviderConfiguration,
+    onProgress: (AccountLoadingProgress) -> Unit
+): SdfAuthListLoadResult =
     NodeSuiteCloudAccountProvider(resolver = {
         NodeSuiteCloudCommandResolver(
             explicitNode = configuration.nodeExecutable.takeIf(String::isNotEmpty)?.let(Path::of),
             explicitLauncher = configuration.suiteCloudLauncher.takeIf(String::isNotEmpty)?.let(Path::of)
         ).resolve()
-    }).load()
+    }).load(onProgress = { completed, total -> onProgress(AccountLoadingProgress(completed, total)) })
