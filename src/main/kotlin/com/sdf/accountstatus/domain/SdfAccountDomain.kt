@@ -17,5 +17,6 @@ data class AccountWidgetState(
     val text: String,
     val tooltip: String,
     val tone: WidgetTone,
-    val showCriticalIcon: Boolean = false
+    val showCriticalIcon: Boolean = false,
+    val accessibleDescription: String = tooltip
 )

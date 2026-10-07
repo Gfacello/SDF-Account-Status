@@ -111,9 +111,9 @@ internal object SdfAccountRecommender {
 
 /** Shared normalization keeps recommendation and picker grouping behavior identical. */
 internal object SdfAccountIdentityNormalizer {
-    private val nonProductionAccountSuffix = Regex("_(?:SB\\d+|RP)$", RegexOption.IGNORE_CASE)
+    private val nonProductionAccountSuffix = Regex("_(?:SB|RP)\\d*$", RegexOption.IGNORE_CASE)
     private val companyEnvironmentSuffix = Regex(
-        "(?:\\s*[-_]\\s*(?:SB\\d+|SANDBOX|DEV|PRE[-_\\s]*PROD|RP|RELEASE[-_\\s]*PREVIEW))+$",
+        "(?:\\s*[-_]\\s*(?:SB\\d*|SANDBOX|DEV|PRE[-_\\s]*PROD|RP\\d*|RELEASE[-_\\s]*PREVIEW))+$",
         RegexOption.IGNORE_CASE
     )
     private val companySeparator = Regex("[^\\p{L}\\p{N}]+")

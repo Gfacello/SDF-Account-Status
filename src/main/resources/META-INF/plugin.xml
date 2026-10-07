@@ -4,24 +4,17 @@
     <vendor url="https://github.com/Gfacello/SDF-Account-Status">gfacello</vendor>
 
     <description>
-        <p>Shows the active NetSuite SuiteCloud Development Framework (SDF) account from <code>project.json</code> directly in the WebStorm status bar.</p>
+        <p>Recognize, choose, and open your NetSuite SuiteCloud Development Framework (SDF) accounts directly from WebStorm.</p>
         <ul>
-            <li>Auto-detects <code>defaultAuthId</code> (and legacy <code>DefaultAuthID</code>)</li>
-            <li>Auto-refreshes when the account changes in SuiteCloud settings</li>
-            <li>Click the label to search and select a configured SuiteCloud authentication ID</li>
-            <li>Search by authentication ID, account name, account number, role, or environment</li>
-            <li>Browse combined account-family/customer groups with aligned account, environment, and role columns</li>
-            <li>See related-account recommendations and confirm before switching to production</li>
-            <li>Open <code>project.json</code> directly from the account picker</li>
+            <li>Show the authentication ID or company, environment, and role in the status bar</li>
+            <li>Search and filter accounts by environment and role, with current and related accounts grouped together</li>
+            <li>Refresh accounts without closing the picker or losing valid filters</li>
+            <li>Open the current or selected account using a locally saved HTTPS NetSuite UI URL</li>
+            <li>Start account setup through Oracle's WebStorm Account Management settings</li>
+            <li>Confirm production switches and preserve unrelated <code>project.json</code> content</li>
         </ul>
-        <h3>Environment Colors</h3>
-        <ul>
-            <li><b>Green</b>: Sandbox</li>
-            <li><b>Red + critical icon</b>: Production</li>
-            <li><b>Yellow</b>: Release Preview or unknown/unverified</li>
-        </ul>
-        <p><b>Requirement:</b> The account picker uses an existing local SuiteCloud CLI for Java installation and invokes only its read-only <code>manageauth -list</code> operation. The status display remains available when the CLI is unavailable.</p>
-        <p>The plugin does not read SuiteCloud credential contents, log CLI output, or provide automatic telemetry. Exception reports are sent to JetBrains Marketplace only when the user explicitly submits one from the IDE.</p>
+        <p><b>Requirements:</b> Account discovery uses an existing SuiteCloud CLI for Node.js installation and its supported Node.js/JDK runtimes. Legacy Java CLI discovery is available as an explicit choice. Account setup requires Oracle's SuiteCloud IDE Plug-in for WebStorm. The authentication ID from <code>project.json</code> remains visible when account discovery is unavailable.</p>
+        <p>The plugin does not read SuiteCloud credential contents, log raw CLI output, or send automatic telemetry. The IDE may submit exception reports to JetBrains Marketplace manually or automatically according to its error-reporting settings.</p>
         <p><small>Independent project; not affiliated with or endorsed by Oracle.</small></p>
     </description>
 

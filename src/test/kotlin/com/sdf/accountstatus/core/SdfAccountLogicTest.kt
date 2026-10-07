@@ -89,4 +89,22 @@ class SdfAccountLogicTest {
             SdfAccountIdentityNormalizer.normalizedCustomer("Acme Example Corp - Release Preview")
         )
     }
+
+    @Test
+    fun `matches Oracle sandbox and release preview account ID variants`() {
+        listOf("123456_SB", "123456_sb12").forEach {
+            assertEquals(AccountEnvironment.SANDBOX, SdfAccountEnvironmentClassifier.classifyAccountId(it))
+            assertEquals("123456", SdfAccountIdentityNormalizer.accountFamily(it))
+        }
+        listOf("123456_RP", "123456_rp2").forEach {
+            assertEquals(AccountEnvironment.RELEASE_PREVIEW, SdfAccountEnvironmentClassifier.classifyAccountId(it))
+            assertEquals("123456", SdfAccountIdentityNormalizer.accountFamily(it))
+        }
+        listOf("123456_SBX", "123456_RP2_suffix", "123456-rp2", "TSTDRV0000000").forEach {
+            assertEquals(AccountEnvironment.UNKNOWN, SdfAccountEnvironmentClassifier.classifyAccountId(it))
+            assertEquals(it, SdfAccountIdentityNormalizer.accountFamily(it))
+        }
+        assertEquals("Example Co", SdfAccountIdentityNormalizer.customerDisplayName("Example Co - SB"))
+        assertEquals("Example Co", SdfAccountIdentityNormalizer.customerDisplayName("Example Co - RP2"))
+    }
 }
